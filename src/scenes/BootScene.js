@@ -1,0 +1,229 @@
+// 그림 파일 없이 모든 그림을 코드로 그려 텍스처로 만든다.
+import Phaser from 'phaser';
+import { buildCharacterTextures } from '../render/sprites.js';
+
+const DARK = 0x161b20;
+
+function rng(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+export class BootScene extends Phaser.Scene {
+  constructor() {
+    super('Boot');
+  }
+
+  make_(key, w, h, draw) {
+    const g = this.make.graphics({ x: 0, y: 0 }, false);
+    draw(g, w, h);
+    g.generateTexture(key, w, h);
+    g.destroy();
+  }
+
+  create() {
+    buildCharacterTextures(this);
+    this.drawItems();
+    this.drawEffects();
+    this.drawShots();
+    this.drawGround();
+    this.scene.start('Title');
+  }
+
+  drawItems() {
+    const coin = (g) => {
+      g.fillStyle(0xffc83d, 1);
+      g.lineStyle(2, 0x8a6510, 1);
+      g.fillCircle(11, 11, 9);
+      g.strokeCircle(11, 11, 9);
+      g.fillStyle(0xfff0b0, 1);
+      g.fillRect(9, 6, 4, 10);
+    };
+    this.make_('item_coin', 22, 22, coin);
+    this.make_('spit', 18, 18, (g) => {
+      g.fillStyle(0x9fd13a, 1);
+      g.lineStyle(2, 0x4a6a14, 1);
+      g.fillCircle(9, 9, 7);
+      g.strokeCircle(9, 9, 7);
+      g.fillStyle(0xd9f59a, 1);
+      g.fillCircle(7, 7, 2);
+    });
+  }
+
+  drawEffects() {
+    const soft = (key, size, color, maxAlpha, steps = 14) =>
+      this.make_(key, size, size, (g) => {
+        const r = size / 2;
+        for (let i = steps; i >= 1; i--) {
+          g.fillStyle(color, (maxAlpha / steps) * 1.2);
+          g.fillCircle(r, r, (r * i) / steps);
+        }
+      });
+    soft('smoke', 40, 0xb8bfc4, 0.9);
+    this.make_('fire', 128, 128, (g) => {
+      const colors = [0x8a2a10, 0xc0461a, 0xe2701f, 0xf59a2a, 0xffc54d, 0xffe08a];
+      colors.forEach((c, i) => {
+        g.fillStyle(c, 0.55);
+        g.fillCircle(64, 64, 63 - i * 10);
+      });
+    });
+    this.make_('aura', 256, 256, (g) => {
+      g.fillStyle(0x5fb4ff, 0.13);
+      g.fillCircle(128, 128, 127);
+      g.lineStyle(4, 0x9fd4ff, 0.55);
+      g.strokeCircle(128, 128, 124);
+      g.lineStyle(2, 0x9fd4ff, 0.35);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        g.beginPath();
+        g.arc(128, 128, 104, a, a + 0.35, false);
+        g.strokePath();
+      }
+    });
+    this.make_('ring', 64, 64, (g) => {
+      g.lineStyle(4, 0xffffff, 1);
+      g.strokeCircle(32, 32, 29);
+    });
+    this.make_('dot', 8, 8, (g) => {
+      g.fillStyle(0xffffff, 1);
+      g.fillCircle(4, 4, 4);
+    });
+  }
+
+  // 아군이 쏘는 것들(모두 오른쪽을 향함)
+  drawShots() {
+    this.make_('bullet', 16, 6, (g) => {
+      g.fillStyle(0xffe17a, 1);
+      g.fillRoundedRect(0, 0, 16, 6, 3);
+      g.fillStyle(0xfff7d6, 1);
+      g.fillRoundedRect(8, 1, 7, 3, 1.5);
+    });
+    this.make_('pellet', 8, 8, (g) => {
+      g.fillStyle(0xffd27a, 1);
+      g.fillCircle(4, 4, 4);
+    });
+    this.make_('arrow', 22, 8, (g) => {
+      g.lineStyle(2, 0x8a6436, 1);
+      g.lineBetween(2, 4, 16, 4);
+      g.fillStyle(0xd7dde2, 1);
+      g.fillTriangle(15, 0, 22, 4, 15, 8);
+      g.fillStyle(0xe5534b, 1);
+      g.fillTriangle(0, 1, 5, 4, 0, 7);
+    });
+    this.make_('pan', 22, 16, (g) => {
+      g.fillStyle(0x2a2a2a, 1);
+      g.fillCircle(14, 8, 7.5);
+      g.fillStyle(0x4a4a4a, 1);
+      g.fillCircle(14, 8, 5);
+      g.fillStyle(0x6b4a26, 1);
+      g.fillRect(0, 6, 8, 4);
+    });
+    this.make_('brick', 16, 11, (g) => {
+      g.fillStyle(0xb5562e, 1);
+      g.lineStyle(2, DARK, 1);
+      g.fillRect(1, 1, 14, 9);
+      g.strokeRect(1, 1, 14, 9);
+    });
+    this.make_('firework', 18, 10, (g) => {
+      g.fillStyle(0xffd27a, 0.6);
+      g.fillTriangle(0, 5, 8, 2, 8, 8);
+      g.fillStyle(0xff7ad1, 1);
+      g.fillRoundedRect(6, 2, 12, 6, 3);
+    });
+    this.make_('ice', 16, 16, (g) => {
+      g.fillStyle(0xbfe9ff, 1);
+      g.lineStyle(2, 0x5fa8d0, 1);
+      const pts = [[8, 0], [16, 8], [8, 16], [0, 8]].map(([x, y]) => new Phaser.Geom.Point(x, y));
+      g.fillPoints(pts, true);
+      g.strokePoints(pts, true);
+    });
+    this.make_('grenade', 14, 14, (g) => {
+      g.fillStyle(0x4a5a2a, 1);
+      g.lineStyle(2, DARK, 1);
+      g.fillCircle(7, 7, 6);
+      g.strokeCircle(7, 7, 6);
+    });
+    this.make_('rocket', 26, 10, (g) => {
+      g.fillStyle(0xffb347, 0.7);
+      g.fillTriangle(0, 5, 7, 1, 7, 9);
+      g.fillStyle(0x9aa6b2, 1);
+      g.lineStyle(2, DARK, 1);
+      g.fillRoundedRect(6, 1, 16, 8, 3);
+      g.strokeRoundedRect(6, 1, 16, 8, 3);
+      g.fillStyle(0xe5534b, 1);
+      g.fillTriangle(21, 1, 26, 5, 21, 9);
+    });
+  }
+
+  drawGround() {
+    const r = rng(7);
+    this.make_('ground', 256, 256, (g) => {
+      g.fillStyle(0x2a3326, 1);
+      g.fillRect(0, 0, 256, 256);
+      for (let i = 0; i < 9; i++) {
+        g.fillStyle(r() < 0.5 ? 0x263021 : 0x2f392a, 1);
+        g.fillCircle(r() * 256, r() * 256, 18 + r() * 30);
+      }
+      for (let i = 0; i < 220; i++) {
+        g.fillStyle([0x33402d, 0x232b1f, 0x3a4632][Math.floor(r() * 3)], 1);
+        g.fillRect(Math.floor(r() * 256), Math.floor(r() * 256), 2, 2);
+      }
+      for (let i = 0; i < 26; i++) {
+        const x = r() * 250;
+        const y = r() * 250;
+        g.lineStyle(2, 0x41553a, 1);
+        g.lineBetween(x, y, x - 2, y - 6);
+        g.lineBetween(x + 3, y, x + 4, y - 7);
+      }
+      for (let i = 0; i < 6; i++) {
+        g.fillStyle(0x4a4f4c, 1);
+        g.fillCircle(r() * 250, r() * 250, 2 + r() * 3);
+      }
+    });
+    // 맵에 흩어지는 장식(충돌 없음)
+    this.make_('prop_car', 120, 64, (g) => {
+      g.fillStyle(0x000000, 0.25);
+      g.fillRoundedRect(6, 8, 114, 56, 10);
+      g.fillStyle(0x6a7a86, 1);
+      g.lineStyle(3, DARK, 1);
+      g.fillRoundedRect(2, 2, 112, 56, 10);
+      g.strokeRoundedRect(2, 2, 112, 56, 10);
+      g.fillStyle(0x3b4752, 1);
+      g.fillRoundedRect(30, 8, 50, 44, 6);
+      g.fillStyle(0x8fb8d0, 0.6);
+      g.fillRect(74, 10, 8, 40);
+      g.fillRect(28, 10, 6, 40);
+    });
+    this.make_('prop_barrel', 34, 34, (g) => {
+      g.fillStyle(0x000000, 0.25);
+      g.fillCircle(19, 19, 15);
+      g.fillStyle(0x3f7a4a, 1);
+      g.lineStyle(3, DARK, 1);
+      g.fillCircle(16, 16, 14);
+      g.strokeCircle(16, 16, 14);
+      g.lineStyle(2, 0x2c5434, 1);
+      g.strokeCircle(16, 16, 9);
+    });
+    this.make_('prop_crate', 40, 40, (g) => {
+      g.fillStyle(0x000000, 0.25);
+      g.fillRect(5, 5, 35, 35);
+      g.fillStyle(0x9a7444, 1);
+      g.lineStyle(3, DARK, 1);
+      g.fillRect(2, 2, 34, 34);
+      g.strokeRect(2, 2, 34, 34);
+      g.lineStyle(3, 0x6b4f2c, 1);
+      g.lineBetween(4, 4, 34, 34);
+      g.lineBetween(34, 4, 4, 34);
+    });
+    this.make_('prop_bush', 56, 50, (g) => {
+      const rr = rng(3);
+      for (let i = 0; i < 6; i++) {
+        g.fillStyle(i % 2 ? 0x2f4a2a : 0x375a31, 1);
+        g.fillCircle(14 + rr() * 28, 14 + rr() * 22, 11 + rr() * 6);
+      }
+    });
+  }
+}
