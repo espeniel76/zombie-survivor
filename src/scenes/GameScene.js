@@ -585,6 +585,7 @@ export class GameScene extends Phaser.Scene {
   damageBase(n, from = null) {
     n = this.heroes.onBaseHit(n, from);
     this.baseHp = Math.max(0, this.baseHp - Math.max(1, Math.round(n)));
+    this.heroes.checkPhoenix();
     this.snd('hurt');
     if (this.save.settings.flash) this.cameras.main.shake(90, 0.004);
   }

@@ -38,7 +38,7 @@ function drawField() {
       ctx.fillStyle = '#b39a6a'; ctx.beginPath(); ctx.ellipse(x, y, 12, 8, 0, 0, Math.PI * 2); ctx.fill();
     }
   }
-  const team = ['wisp', 'gravity', 'dragon', 'mirror', 'echo', 'gambler', 'frog', 'swamp', 'stone'];
+  const team = ['wisp', 'gravity', 'dragon', 'mirror', 'echo', 'gambler', 'phoenix', 'swamp', 'shadowlord'];
   // 좀비들(사방에서 기지 쪽으로)
   const zs = [];
   const kinds = ['walker', 'walker', 'runner', 'walker', 'brute', 'spitter', 'walker', 'runner', 'walker', 'walker', 'spitter', 'runner'];

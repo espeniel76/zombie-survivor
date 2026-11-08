@@ -29,7 +29,7 @@ describe('아군 목록', () => {
   it('공격하는 아군은 사거리와 공격 속도가 있다', () => {
     for (const a of ALLIES) {
       // 스스로 노려 쏘지 않는 아군(보조·패시브 영웅)
-      if (['repair', 'money', 'buff', 'echo', 'mirror', 'souls', 'dragon', 'ghost'].includes(a.kind)) continue;
+      if (['repair', 'money', 'buff', 'echo', 'mirror', 'souls', 'dragon', 'sweep'].includes(a.kind)) continue;
       expect(a.stats.rate, a.id).toBeGreaterThan(0);
       expect(a.stats.range, a.id).toBeGreaterThan(0);
       expect(a.stats.dmg, a.id).toBeGreaterThan(0);

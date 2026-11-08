@@ -61,7 +61,7 @@ export function allyStats(id, lv, rateBuff = 0) {
   if (s.hps) s.hps = Math.max(1, Math.round(s.hps * m));
   if (s.coins) s.coins = Math.round(s.coins * m);
   if (s.burst) s.burst = Math.round(s.burst * m);
-  if (s.hp) s.hp = Math.round(s.hp * m); // 허수아비 체력
+  if (s.threshold) s.threshold = Math.min(0.5, Math.round((s.threshold + 0.03 * (lv - 1)) * 100) / 100); // 처형 기준
   // 영웅 전용 수치
   if (s.power) s.power = Math.min(1, Math.round((s.power + 0.1 * (lv - 1)) * 100) / 100); // 메아리 위력
   if (s.max) s.max += lv - 1; // 벌 최대 수, 가시밭 최대 수

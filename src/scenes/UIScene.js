@@ -32,12 +32,12 @@ export function statsLine(kind, st) {
     case 'mirror': return `되갚기 ${st.dmg} + 맞은 피해×${st.mul} · 기지 피해 -${pct(st.guard)}`;
     case 'sleep': return `${sec}초마다 재우기 ${st.time}초 · 깨울 때 피해 ×${st.wake}`;
     case 'dice': return `피해 ${st.dmg}×(주사위÷2) · 6이면 모든 좀비 ${st.dmg * 3}`;
-    case 'decoy': return `허수아비 체력 ${st.hp} · ${st.time}초 · 터질 때 ${st.dmg}`;
     case 'souls': return `영혼 ${st.need}개마다 강한 좀비 ${st.count}마리에 ${st.dmg}`;
     case 'dragon': return `아기 용 불 초당 ${Math.round(st.dmg * st.rate)} · 기지 둘레 비행`;
     case 'stone': return `시선 안 좀비가 돌로 · ${st.time}초 뒤 부서짐`;
-    case 'frog': return `${sec}초마다 ${st.count}마리 개구리로 · ${st.time}초 · 피해 ×${1 + st.vuln}`;
-    case 'ghost': return `쓰러질 때 ${pct(st.chance)} 확률로 유령 · 폭발 ${st.dmg}`;
+    case 'execute': return `체력 ${pct(st.threshold)} 이하 좀비 처형 · 아니면 ${st.dmg} · 거대 좀비 +${pct(st.bossPct)}`;
+    case 'sweep': return `칼날 두 개가 기지를 돌며 초당 ${Math.round(st.dmg * st.rate)} · 느리게`;
+    case 'phoenix': return `깃털 ${st.dmg} · 기지 ${pct(st.trigger)} 아래면 웨이브마다 한 번 +${pct(st.heal)} 부활`;
     case 'tornado': return `${sec}초마다 회오리 · 휩쓸린 좀비 0.5초마다 ${st.dmg}`;
     case 'gravity': return `${sec}초마다 중력장 · 초당 ${st.dmg * 4} · 마무리 ${st.burst}`;
     case 'pact': return `피해 ${st.dmg}~${st.dmg * st.maxMul} · 기지가 다칠수록 셈`;

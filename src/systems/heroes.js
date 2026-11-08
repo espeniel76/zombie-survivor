@@ -2,18 +2,18 @@
 //   fire()       영웅이 공격할 때(쿨타임이 찼고 사거리 안에 좀비가 있을 때)
 //   onAllyFire() 아군이 쏠 때마다 → 옆 칸 메아리술사가 따라 쏜다
 //   onBaseHit()  좀비가 기지를 때릴 때 → 거울 기사가 되갚는다
-//   onKill()     좀비가 쓰러질 때 → 역병 전염, 영혼 모으기, 유령 소환
-//   controls()   좀비가 이번 프레임에 스스로 못 움직이는지(정지·잠·개구리·돌·회오리·미끼 등)
-//   update()     도깨비불, 중력장, 늪, 허수아비, 용, 회오리, 유령 …
+//   onKill()     좀비가 쓰러질 때 → 역병 전염, 영혼 모으기
+//   checkPhoenix() 기지 체력이 바닥나기 직전 → 불사조 기사가 되살린다
+//   controls()   좀비가 이번 프레임에 스스로 못 움직이는지(정지·잠·돌·회오리 등)
+//   update()     도깨비불, 중력장, 늪, 용, 회오리, 그림자 칼날 …
 // 번쩍이는 효과는 쓰지 않는다. 모든 표시는 천천히 커지거나 옅어진다.
 import { ALLY } from '../data/allies.js';
 import * as R from '../core/rules.js';
-import { BODY_OY } from '../render/sprites.js';
 
 // 메아리술사가 따라 할 수 있는 공격
 const ECHO_KINDS = new Set(['bullet', 'splash', 'strike', 'flame', 'beam', 'chain', 'wisps', 'bounce', 'pact', 'plague', 'dice', 'tornado']);
 // 스스로 노려 쏘지 않는 영웅(옆 칸·기지·쓰러짐에 반응하거나 혼자 움직인다)
-export const PASSIVE_HEROES = new Set(['echo', 'mirror', 'souls', 'dragon', 'ghost']);
+export const PASSIVE_HEROES = new Set(['echo', 'mirror', 'souls', 'dragon', 'sweep']);
 
 export class HeroSystem {
   constructor(scene, layout) {
@@ -23,12 +23,11 @@ export class HeroSystem {
     this.wisps = [];
     this.wells = [];
     this.pools = [];
-    this.decoys = [];
     this.tornados = [];
-    this.ghosts = [];
     this.dragons = new Map(); // 아군 → 용 그림
     this.globalSlow = 0;
     this.g = scene.add.graphics().setDepth(8.5); // 실, 시계, 영혼, 시선 표시
+    this.ground = scene.add.graphics().setDepth(2.8); // 땅 위를 도는 그림자 칼날
   }
 
   // 아군 배치가 바뀔 때
@@ -251,17 +250,28 @@ export class HeroSystem {
         }
         break;
       }
-      case 'decoy': { // 허수아비 술사: 좀비를 꾀는 허수아비
-        if (this.decoys.filter(d => d.owner === u && !d.done).length >= 2) {
-          u.cd = 1;
-          return;
+      case 'execute': { // 처형인: 약해진 좀비는 단칼에, 아니면 큰 일격
+        let victim = null;
+        for (const z of s.zombies) {
+          if (z.dead || z.puppet || z.petrified || z.def.boss) continue;
+          if (Math.hypot(z.x - p.x, z.y - p.y) > st.range + z.r) continue;
+          const k = z.hp / z.maxHp;
+          if (k <= st.threshold && (!victim || k < victim.hp / victim.maxHp)) victim = z;
         }
-        const tx = target.x + (this.L.CX - target.x) * 0.2;
-        const ty = target.y + (this.L.CY - target.y) * 0.2;
-        const img = s.add.image(tx, ty, 'scarecrow').setOrigin(0.5, 0.85).setDepth(5 + ty * 1e-5).setScale(0.3);
-        s.tweens.add({ targets: img, scale: 1, duration: 260, ease: 'Back.Out' });
-        this.decoys.push({ img, owner: u, x: tx, y: ty, hp: st.hp, maxHp: st.hp, life: st.time, st });
-        s.snd('impact', tx);
+        const z = victim || target;
+        this.slash(z.x, z.y, z.r);
+        if (victim) {
+          s.floatText(z.x, z.y - z.r - 10, '처형', '#e8e8f0', 20, true);
+          s.hurt(z, z.hp + 1, { quiet: true });
+        } else {
+          s.hurt(z, st.dmg + (z.def.boss ? Math.round(z.maxHp * st.bossPct) : 0));
+        }
+        s.snd('impact', z.x);
+        break;
+      }
+      case 'phoenix': { // 불사조 기사: 평소엔 불꽃 깃털을 쏜다
+        s.shootBullet(mx, my, ang, target, { ...st, tex: 'feather' });
+        s.snd('flame', p.x);
         break;
       }
       case 'stone': { // 석화의 눈: 시선 안의 좀비가 점점 돌이 된다
@@ -289,24 +299,6 @@ export class HeroSystem {
         }
         break;
       }
-      case 'frog': { // 개구리 마법사: 무리를 개구리로
-        const pool = s.zombies
-          .filter(z => !z.dead && !z.puppet && !z.def.boss && !z.frogUntil && !z.petrified && Math.hypot(z.x - target.x, z.y - target.y) <= st.radius)
-          .sort((a2, b2) => Math.hypot(a2.x - target.x, a2.y - target.y) - Math.hypot(b2.x - target.x, b2.y - target.y))
-          .slice(0, st.count);
-        for (const z of pool) {
-          this.clearStatus(z);
-          z.frogUntil = s.t + st.time;
-          z.vuln = st.vuln;
-          z.hopT = Math.random() * 0.5;
-          z.setTexture('frog').setOrigin(0.5, 0.6);
-          z.clearTint();
-          s.hurt(z, st.dmg, { quiet: true });
-        }
-        this.ripple(target.x, target.y, 0x9be15d, st.radius, 500);
-        s.snd('sparkle', target.x);
-        break;
-      }
       case 'tornado': { // 회오리 술사: 휩쓸어 밖으로 날려 보낸다
         const img = s.add.image(mx, my, 'tornado').setOrigin(0.5, 0.8).setDepth(7.2).setScale(0.4).setAlpha(0.9);
         s.tweens.add({ targets: img, scale: 1, duration: 300 });
@@ -319,12 +311,8 @@ export class HeroSystem {
     }
   }
 
-  // 다른 상태(개구리·돌·잠 등)를 지운다. 새 상태를 걸기 전에 부른다.
+  // 다른 상태(돌·잠 등)를 지운다. 새 상태를 걸기 전에 부른다.
   clearStatus(z) {
-    if (z.frogUntil) {
-      z.setTexture(z.def.tex).setOrigin(0.5, BODY_OY);
-      z.frogUntil = 0;
-    }
     z.sleepUntil = 0;
     z.petrified = 0;
     z.stone = 0;
@@ -353,22 +341,6 @@ export class HeroSystem {
       }
       return true;
     }
-    if (z.frogUntil) {
-      if (s.t >= z.frogUntil) {
-        this.clearStatus(z);
-        return false;
-      }
-      z.hopT -= dt;
-      if (z.hopT <= 0) {
-        z.hopT = 0.6;
-        const a = Math.random() * Math.PI * 2;
-        const hx = z.x + Math.cos(a) * 28;
-        const hy = z.y + Math.sin(a) * 28;
-        s.tweens.add({ targets: z, x: hx, y: hy, duration: 260, ease: 'Sine.Out' });
-        z.setFlipX(Math.cos(a) < 0);
-      }
-      return true;
-    }
     if (z.sleepUntil > s.t) return true;
     if (z.frozenUntil > s.t) return true;
     if (z.knockT > 0) {
@@ -388,31 +360,6 @@ export class HeroSystem {
         z.y += (dy / d) * Math.min(pull, d - 4);
       }
       return true;
-    }
-    // 허수아비에게 꾀이기(거대 좀비는 안 넘어간다)
-    if (!z.def.boss) {
-      for (const dc of this.decoys) {
-        if (dc.done) continue;
-        const dx = dc.x - z.x;
-        const dy = dc.y - z.y;
-        const d = Math.hypot(dx, dy);
-        if (d > dc.st.radius) continue;
-        z.attacking = false;
-        z.setFlipX(dx < 0);
-        if (d > z.r + 12) {
-          const v = z.def.speed * dt;
-          z.x += (dx / d) * v;
-          z.y += (dy / d) * v;
-        } else {
-          z.atkT -= dt;
-          if (z.atkT <= 0) {
-            z.atkT = 1;
-            dc.hp -= z.dmg;
-            s.tweens.add({ targets: dc.img, angle: 6, duration: 70, yoyo: true });
-          }
-        }
-        return true;
-      }
     }
     return false;
   }
@@ -453,11 +400,11 @@ export class HeroSystem {
     }
   }
 
-  // 받는 피해 배율(정지·개구리), 잠든 좀비는 깨면서 세 배
+  // 받는 피해 배율(정지), 잠든 좀비는 깨면서 세 배
   damageMul(z) {
     const t = this.s.t;
     let m = 1;
-    if (z.frozenUntil > t || z.frogUntil) m *= 1 + (z.vuln || 0);
+    if (z.frozenUntil > t) m *= 1 + (z.vuln || 0);
     if (z.sleepUntil > t) {
       m *= z.wake || 1;
       z.sleepUntil = 0;
@@ -474,7 +421,6 @@ export class HeroSystem {
   // 좀비가 쓰러질 때
   onKill(z) {
     const s = this.s;
-    if (z.frogUntil) this.clearStatus(z);
     if (z.caughtBy) {
       z.caughtBy.caught.delete(z);
       z.caughtBy = null;
@@ -493,13 +439,6 @@ export class HeroSystem {
         u.souls = 0;
         this.releaseSouls(u, i);
       }
-    }
-    // 유령 소환사
-    for (const { u } of this.alliesOf('ghost')) {
-      if (this.ghosts.length >= 12 || Math.random() > u.st.chance) continue;
-      const img = s.add.image(z.x, z.y, 'ghost').setDepth(7.6).setAlpha(0).setScale(0.6);
-      s.tweens.add({ targets: img, alpha: 0.9, scale: 1, duration: 250 });
-      this.ghosts.push({ img, st: u.st, target: null, delay: 0.3, life: 5 });
     }
   }
 
@@ -560,10 +499,9 @@ export class HeroSystem {
     this.updateWisps(dt);
     this.updateWells(dt);
     this.updatePools(dt);
-    this.updateDecoys(dt);
     this.updateDragons(dt);
     this.updateTornados(dt);
-    this.updateGhosts(dt);
+    this.updateSweeps(dt);
     this.draw();
   }
 
@@ -644,21 +582,6 @@ export class HeroSystem {
       }
     }
     if (this.pools.some(t => t.done)) this.pools = this.pools.filter(t => !t.done);
-  }
-
-  updateDecoys(dt) {
-    const s = this.s;
-    for (const dc of this.decoys) {
-      if (dc.done) continue;
-      dc.life -= dt;
-      if (dc.hp <= 0 || dc.life <= 0) {
-        dc.done = true;
-        s.explode(dc.x, dc.y, dc.st.radius * 0.55, dc.st.dmg, 0xffc860, 'boom');
-        const img = dc.img;
-        s.tweens.add({ targets: img, alpha: 0, scale: 0.6, duration: 250, onComplete: () => img.destroy() });
-      }
-    }
-    if (this.decoys.some(d => d.done)) this.decoys = this.decoys.filter(d => !d.done);
   }
 
   // 용: 용 조련사마다 한 마리, 기지 둘레를 돌며 가까운 좀비에게 불을 뿜는다
@@ -753,41 +676,51 @@ export class HeroSystem {
     if (this.tornados.some(t => t.done)) this.tornados = this.tornados.filter(t => !t.done);
   }
 
-  updateGhosts(dt) {
+  // 그림자 군주: 기지 둘레를 도는 그림자 칼날 두 개
+  updateSweeps(dt) {
     const s = this.s;
-    for (const gh of this.ghosts) {
-      gh.life -= dt;
-      gh.delay -= dt;
-      if (gh.life <= 0) {
-        gh.done = true;
-        continue;
-      }
-      if (gh.delay > 0) {
-        gh.img.y -= 20 * dt;
-        continue;
-      }
-      if (!gh.target || gh.target.dead || gh.target.puppet) gh.target = this.nearestZombie(gh.img.x, gh.img.y, 700);
-      if (!gh.target) continue;
-      const dx = gh.target.x - gh.img.x;
-      const dy = gh.target.y - gh.img.y;
-      const d = Math.hypot(dx, dy) || 1;
-      gh.img.setFlipX(dx < 0);
-      const v = 260 * dt;
-      gh.img.x += (dx / d) * Math.min(v, d);
-      gh.img.y += (dy / d) * Math.min(v, d);
-      if (d < gh.target.r + 8) {
-        gh.done = true;
-        s.explode(gh.img.x, gh.img.y, gh.st.radius, gh.st.dmg, 0xe8f0ff, 'boom');
+    for (const { u } of this.alliesOf('sweep')) {
+      u.sweepA = (u.sweepA || 0) + u.st.spin * dt;
+      u.cd -= dt;
+      if (u.cd > 0) continue;
+      u.cd = 1 / u.st.rate;
+      const inner = this.L.HALF + 18;
+      const outer = inner + u.st.range;
+      for (const z of s.zombies) {
+        if (z.dead || z.puppet) continue;
+        const d = Math.hypot(z.x - this.L.CX, z.y - this.L.CY);
+        if (d < inner - z.r || d > outer + z.r) continue;
+        const a = Math.atan2(z.y - this.L.CY, z.x - this.L.CX);
+        for (const blade of [u.sweepA, u.sweepA + Math.PI]) {
+          const diff = Math.abs(Math.atan2(Math.sin(a - blade), Math.cos(a - blade)));
+          if (diff <= u.st.width / 2 + z.r / d) {
+            s.hurt(z, u.st.dmg, { quiet: true, slow: 0.3, slowTime: 0.4, slowTint: 0xc8b0f0 });
+            break;
+          }
+        }
       }
     }
-    if (this.ghosts.some(g => g.done)) {
-      this.ghosts = this.ghosts.filter(g => {
-        if (g.done) {
-          const img = g.img;
-          s.tweens.add({ targets: img, alpha: 0, duration: 200, onComplete: () => img.destroy() });
-        }
-        return !g.done;
-      });
+  }
+
+  // 처형인의 칼자국(엇갈린 두 줄)
+  slash(x, y, r) {
+    const k = r + 8;
+    this.s.lines.push({ pts: [x - k, y - k, x + k, y + k], color: 0xe8e8f0, width: 4, life: 0.3, max: 0.3 });
+    this.s.lines.push({ pts: [x + k, y - k * 0.6, x - k, y + k * 0.6], color: 0xc0c8d0, width: 3, life: 0.25, max: 0.25 });
+  }
+
+  // 불사조 기사: 기지 체력이 바닥나기 직전, 웨이브마다 한 번 되살린다
+  checkPhoenix() {
+    const s = this.s;
+    for (const { u } of this.alliesOf('phoenix')) {
+      if (s.baseHp > s.baseMax * u.st.trigger || u.rebornWave === s.wave) continue;
+      u.rebornWave = s.wave;
+      const heal = Math.round(s.baseMax * u.st.heal);
+      s.baseHp = Math.min(s.baseMax, s.baseHp + heal);
+      s.explode(this.L.CX, this.L.CY, this.L.HALF + u.st.radius, u.st.burst, 0xffa040, 'bigboom');
+      this.ripple(this.L.CX, this.L.CY, 0xffd84a, this.L.HALF + u.st.radius, 900);
+      s.ui.banner(`불사조의 부활!  기지 +${heal}`);
+      return;
     }
   }
 
@@ -796,6 +729,26 @@ export class HeroSystem {
     const s = this.s;
     const g = this.g;
     g.clear();
+    const gr = this.ground;
+    gr.clear();
+    for (const { u } of this.alliesOf('sweep')) {
+      const inner = this.L.HALF + 18;
+      const outer = inner + u.st.range;
+      const half = u.st.width / 2;
+      for (const blade of [u.sweepA || 0, (u.sweepA || 0) + Math.PI]) {
+        gr.fillStyle(0x2a1440, 0.32);
+        gr.beginPath();
+        gr.arc(this.L.CX, this.L.CY, outer, blade - half, blade + half, false);
+        gr.arc(this.L.CX, this.L.CY, inner, blade + half, blade - half, true);
+        gr.closePath();
+        gr.fillPath();
+        gr.lineStyle(3, 0x8a5cff, 0.55);
+        gr.beginPath();
+        gr.moveTo(this.L.CX + Math.cos(blade + half) * inner, this.L.CY + Math.sin(blade + half) * inner);
+        gr.lineTo(this.L.CX + Math.cos(blade + half) * outer, this.L.CY + Math.sin(blade + half) * outer);
+        gr.strokePath();
+      }
+    }
     for (const z of s.zombies) {
       if (z.dead) continue;
       if (z.puppet) {
@@ -825,13 +778,6 @@ export class HeroSystem {
         g.lineStyle(3, 0x9a9690, 0.7);
         g.beginPath(); g.arc(z.x, z.y, z.r + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, z.stone), false); g.strokePath();
       }
-    }
-    // 허수아비 체력
-    for (const dc of this.decoys) {
-      if (dc.done) continue;
-      const k = Math.max(0, dc.hp / dc.maxHp);
-      g.fillStyle(0x000000, 0.5); g.fillRect(dc.x - 20, dc.y + 8, 40, 5);
-      g.fillStyle(0xffc860, 1); g.fillRect(dc.x - 20, dc.y + 8, 40 * k, 5);
     }
     // 영혼 구슬(모은 만큼 영혼 수집가 주위를 돈다)
     for (const { u, i } of this.alliesOf('souls')) {

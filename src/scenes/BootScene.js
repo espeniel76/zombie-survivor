@@ -252,7 +252,7 @@ export class BootScene extends Phaser.Scene {
     });
   }
 
-  // 신화 영웅이 부르는 것들: 카드, 허수아비, 아기 용, 개구리, 유령, 회오리
+  // 신화 영웅이 쓰는 것들: 카드, 아기 용, 불사조 깃털, 회오리
   drawMythicSummons() {
     this.make_('card', 14, 18, (g) => {
       g.fillStyle(0xffffff, 1);
@@ -263,38 +263,6 @@ export class BootScene extends Phaser.Scene {
       g.fillCircle(5.5, 7.5, 2.2);
       g.fillCircle(8.5, 7.5, 2.2);
       g.fillTriangle(3.4, 8.4, 10.6, 8.4, 7, 12.6);
-    });
-    this.make_('scarecrow', 60, 76, (g) => {
-      g.fillStyle(0x000000, 0.25);
-      g.fillEllipse(30, 72, 34, 8);
-      g.lineStyle(3, DARK, 1);
-      g.fillStyle(0x8a6436, 1);
-      g.fillRect(27, 30, 6, 42);
-      g.strokeRect(27, 30, 6, 42);
-      g.fillRect(6, 34, 48, 6);
-      g.strokeRect(6, 34, 48, 6);
-      g.fillStyle(0xd9b25a, 1);
-      for (const x of [4, 52]) g.fillTriangle(x, 32, x + 4, 37, x, 42);
-      g.fillStyle(0x6a8ad0, 1);
-      g.fillRoundedRect(17, 38, 26, 20, 5);
-      g.strokeRoundedRect(17, 38, 26, 20, 5);
-      g.fillStyle(0xd9b25a, 1);
-      g.fillTriangle(18, 58, 24, 58, 21, 64);
-      g.fillTriangle(36, 58, 42, 58, 39, 64);
-      g.fillStyle(0xe8d8a8, 1);
-      g.fillCircle(30, 22, 12);
-      g.strokeCircle(30, 22, 12);
-      g.fillStyle(DARK, 1);
-      g.fillRect(24, 19, 4, 4);
-      g.fillRect(33, 19, 4, 4);
-      g.fillStyle(0xc9a24a, 1);
-      g.fillEllipse(30, 11, 34, 7);
-      g.fillRect(22, 1, 16, 10);
-      g.lineStyle(2, DARK, 1);
-      g.strokeEllipse(30, 11, 34, 7);
-      g.strokeRect(22, 1, 16, 10);
-      g.fillStyle(0xc8202e, 1);
-      g.fillRect(22, 7, 16, 3);
     });
     this.make_('dragon', 56, 44, (g) => {
       // 오른쪽을 보는 동그란 아기 용
@@ -323,45 +291,16 @@ export class BootScene extends Phaser.Scene {
       g.fillStyle(0x5a0e12, 1);
       g.fillCircle(48, 25, 1.2);
     });
-    this.make_('frog', 40, 34, (g) => {
-      g.fillStyle(0x000000, 0.25);
-      g.fillEllipse(20, 31, 28, 6);
-      g.fillStyle(0x4fae5a, 1);
-      g.lineStyle(2, 0x1f4a24, 1);
-      g.fillEllipse(20, 21, 32, 22);
-      g.strokeEllipse(20, 21, 32, 22);
-      for (const x of [11, 29]) {
-        g.fillCircle(x, 10, 7);
-        g.strokeCircle(x, 10, 7);
-        g.fillStyle(0xffffff, 1);
-        g.fillCircle(x, 10, 4.5);
-        g.fillStyle(0x4fae5a, 1);
-      }
-      g.fillStyle(0x9be15d, 1);
-      g.fillEllipse(20, 26, 18, 8);
-      g.lineStyle(1.5, 0x1f4a24, 1);
-      g.beginPath();
-      g.arc(20, 20, 6, 0.3, Math.PI - 0.3, false);
-      g.strokePath();
-    });
-    this.make_('ghost', 34, 38, (g) => {
-      g.fillStyle(0xe8f0ff, 0.95);
-      g.lineStyle(2, 0x8a9ab8, 1);
-      g.beginPath();
-      g.arc(17, 15, 13, Math.PI, 0, false);
-      g.lineTo(30, 32);
-      g.lineTo(25, 28);
-      g.lineTo(21, 34);
-      g.lineTo(17, 29);
-      g.lineTo(13, 34);
-      g.lineTo(9, 28);
-      g.lineTo(4, 32);
-      g.closePath();
-      g.fillPath();
-      g.strokePath();
-      g.fillStyle(0x2a3048, 1);
-      g.fillEllipse(12, 15, 5, 7);
-      g.fillEllipse(22, 15, 5, 7);
+    this.make_('feather', 26, 12, (g) => {
+      // 불사조 깃털: 불꽃색 깃 + 금빛 깃대
+      g.fillStyle(0xff6a2a, 0.5);
+      g.fillTriangle(0, 6, 8, 2, 8, 10);
+      g.fillStyle(0xff8a3a, 1);
+      g.fillEllipse(14, 6, 20, 9);
+      g.fillStyle(0xffd84a, 1);
+      g.fillEllipse(16, 6, 12, 5);
+      g.lineStyle(1.5, 0xfff0b0, 1);
+      g.lineBetween(4, 6, 25, 6);
     });
     this.make_('tornado', 70, 96, (g) => {
       const rings = [[35, 88, 8], [34, 76, 13], [36, 62, 18], [33, 46, 23], [36, 30, 28], [35, 14, 32]];
