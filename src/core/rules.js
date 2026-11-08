@@ -4,7 +4,8 @@ import { ZOMBIES } from '../data/zombies.js';
 
 export const START_COINS = 200;
 export const BASE_HP = 300;
-export const BREAK_TIME = 20; // 웨이브 사이 쉬는 시간(초)
+export const BREAK_TIME = 8; // 웨이브 사이 쉬는 시간(초). 지나면 다음 웨이브가 저절로 시작된다
+export const FIRST_BREAK = 15; // 첫 웨이브 전 준비 시간(초)
 export const BOSS_EVERY = 5;
 export const MAX_ALIVE = 160;
 

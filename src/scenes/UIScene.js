@@ -69,6 +69,8 @@ export class UIScene extends Phaser.Scene {
     this.buildBottom();
 
     this.bannerText = text(this, W / 2, 330, '', 44, COLOR.text, { strokeThickness: 8 }).setDepth(50).setAlpha(0);
+    // 다음 웨이브 직전 3초 카운트(숫자만 바뀌고 밝기는 그대로)
+    this.countText = text(this, W / 2, 560, '', 96, '#ffd84a', { strokeThickness: 10 }).setDepth(45).setAlpha(0.85).setVisible(false);
     this.toastBox = this.add.container(W / 2, 1090).setDepth(60).setAlpha(0);
     this.toastBg = this.add.graphics();
     this.toastText = text(this, 0, 0, '', 26, COLOR.text, { strokeThickness: 0 });
@@ -142,6 +144,9 @@ export class UIScene extends Phaser.Scene {
     if (!g || !g.sys.isActive() && !g.sys.isPaused()) return;
     this.waveText.setText(g.wave === 0 ? '준비' : `웨이브 ${g.wave}`);
     if (g.phase === 'break') this.statusText.setText(`웨이브 ${g.wave + 1} 시작까지 ${Math.ceil(Math.max(0, g.phaseLeft))}초`);
+    const counting = g.phase === 'break' && g.phaseLeft <= 3 && g.phaseLeft > 0 && !this.modal && !this.storyOpen;
+    this.countText.setVisible(counting);
+    if (counting) this.countText.setText(String(Math.ceil(g.phaseLeft)));
     else if (g.phase === 'wave') this.statusText.setText(`남은 좀비 ${g.queue.length + g.zombies.length}`);
     else this.statusText.setText('');
     this.coinText.setText(R.formatNum(g.coins));

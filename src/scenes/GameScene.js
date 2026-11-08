@@ -86,7 +86,7 @@ export class GameScene extends Phaser.Scene {
     this.t = 0;
     this.wave = 0;
     this.phase = 'break';
-    this.phaseLeft = 30;
+    this.phaseLeft = R.FIRST_BREAK;
     this.coins = this.trial ? TRIAL_COINS : R.START_COINS;
     this.baseMax = R.BASE_HP;
     this.baseHp = R.BASE_HP;
