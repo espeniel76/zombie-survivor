@@ -327,8 +327,8 @@ export class GameScene extends Phaser.Scene {
     this.coins += bonus;
     this.phase = 'break';
     this.phaseLeft = R.BREAK_TIME;
-    const fix = Math.min(this.baseMax - this.baseHp, Math.round(this.baseMax * R.WAVE_REPAIR));
-    this.baseHp += fix;
+    const fix = Math.max(0, Math.round(Math.min(this.baseMax - this.baseHp, this.baseMax * R.WAVE_REPAIR)));
+    this.baseHp = Math.min(this.baseMax, this.baseHp + fix);
     this.ui.banner(`웨이브 ${this.wave} 막아냄!  +${bonus}코인${fix > 0 ? `
 기지 수리 +${fix}` : ''}`);
     sfx('win');
@@ -516,8 +516,9 @@ export class GameScene extends Phaser.Scene {
     if (this.spits.some(s => s.done)) this.spits = this.spits.filter(s => !s.done);
   }
 
+  // 기지 체력은 항상 정수(가장 작은 단위 1)
   damageBase(n) {
-    this.baseHp = Math.max(0, this.baseHp - n);
+    this.baseHp = Math.max(0, this.baseHp - Math.max(1, Math.round(n)));
     sfx('hurt');
     if (this.save.settings.flash) this.cameras.main.shake(90, 0.004);
   }
@@ -560,7 +561,13 @@ export class GameScene extends Phaser.Scene {
       const st = u.st;
       const p = cellPos(i);
       if (a.kind === 'repair') {
-        if (this.baseHp > 0) this.baseHp = Math.min(this.baseMax, this.baseHp + st.hps * dt);
+        // 시간을 모았다가 1씩 고친다(기지 체력에 소수점이 생기지 않게)
+        u.fix = (u.fix || 0) + st.hps * dt;
+        const whole = Math.floor(u.fix);
+        if (whole > 0) {
+          u.fix -= whole;
+          if (this.baseHp > 0) this.baseHp = Math.min(this.baseMax, this.baseHp + whole);
+        }
         continue;
       }
       if (a.kind === 'money') {

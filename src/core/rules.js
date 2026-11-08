@@ -55,9 +55,10 @@ export function rateBuffAt(cells, i) {
 export function allyStats(id, lv, rateBuff = 0) {
   const s = { ...ALLY[id].stats };
   const m = levelMul(lv);
-  if (s.dmg) s.dmg = s.dmg * m;
-  if (s.poison) s.poison = s.poison * m;
-  if (s.hps) s.hps = s.hps * m;
+  // 피해·독·수리는 정수로(가장 작은 단위 1)
+  if (s.dmg) s.dmg = Math.max(1, Math.round(s.dmg * m));
+  if (s.poison) s.poison = Math.max(1, Math.round(s.poison * m));
+  if (s.hps) s.hps = Math.max(1, Math.round(s.hps * m));
   if (s.coins) s.coins = Math.round(s.coins * m);
   if (s.rateBuff) s.rateBuff = s.rateBuff * (1 + 0.25 * (lv - 1));
   if (s.rate) s.rate = s.rate * (1 + rateBuff);

@@ -46,8 +46,20 @@ describe('강화와 판매', () => {
     expect(sellPrice('guard', 1)).toBe(25);
     expect(sellPrice('guard', 3)).toBe(Math.round((50 + 30 + 60) / 2));
   });
-  it('레벨이 오르면 피해가 늘어난다', () => {
-    expect(allyStats('guard', 3).dmg).toBeCloseTo(6 * 1.8);
+  it('레벨이 오르면 피해가 늘어난다(정수로 반올림)', () => {
+    expect(allyStats('guard', 3).dmg).toBe(11); // 6 × 1.8 = 10.8
+  });
+  it('피해·독·수리 수치는 모든 레벨에서 1 이상의 정수', () => {
+    for (const a of ALLIES) {
+      for (let lv = 1; lv <= 5; lv++) {
+        const s = allyStats(a.id, lv);
+        for (const k of ['dmg', 'poison', 'hps']) {
+          if (s[k] === undefined) continue;
+          expect(Number.isInteger(s[k]), `${a.id} Lv${lv} ${k}=${s[k]}`).toBe(true);
+          expect(s[k]).toBeGreaterThanOrEqual(1);
+        }
+      }
+    }
   });
 });
 
