@@ -87,27 +87,32 @@ export class TitleScene extends Phaser.Scene {
     c.add(panel(this, W / 2, H / 2, 692, 1200));
     c.add(text(this, W / 2, 110, `아군 도감 · ${ALLIES.length}명`, 40, COLOR.text));
     const detail = this.add.container(0, 0);
-    TIERS.forEach((t, row) => {
-      const y = 200 + row * 128;
-      c.add(text(this, 44, y - 52, t.name, 22, t.text, { ox: 0, strokeThickness: 0 }));
-      ALLIES.filter(a => a.tier === row).forEach((a, col) => {
-        const x = 110 + col * 125;
-        const g = this.add.graphics();
-        g.fillStyle(0x10151a, 1);
-        g.fillRoundedRect(x - 50, y - 34, 100, 100, 12);
-        g.lineStyle(4, t.color, 1);
-        g.strokeRoundedRect(x - 50, y - 34, 100, 100, 12);
-        const img = allyView(this, x, y + 24, a.id, 1.12);
-        const zone = this.add.zone(x, y + 16, 100, 100).setInteractive({ useHandCursor: true });
-        zone.on('pointerup', () => {
-          detail.removeAll(true);
-          detail.add(text(this, W / 2, 996, `${a.name}  ·  ${t.name} ${a.role || KIND_LABEL[a.kind]}  ·  ${R.formatNum(a.price)}코인`, 26, t.text));
-          if (a.quote) detail.add(text(this, W / 2, 1032, `“${a.quote}”`, 21, '#ffd84a', { strokeThickness: 0, bold: false }));
-          detail.add(text(this, W / 2, a.quote ? 1064 : 1040, a.desc, 22, COLOR.text, { strokeThickness: 0, bold: false }));
-          detail.add(text(this, W / 2, a.quote ? 1096 : 1076, statsLine(a.kind, R.allyStats(a.id, 1)), 19, COLOR.dim, { strokeThickness: 0, bold: false }));
+    // 한 줄에 5명. 신화는 여러 줄이 된다.
+    let row = 0;
+    TIERS.forEach((t, ti) => {
+      const list = ALLIES.filter(a => a.tier === ti);
+      for (let start = 0; start < list.length; start += 5, row++) {
+        const y = 196 + row * 96;
+        if (start === 0) c.add(text(this, 40, y, t.name, 22, t.text, { ox: 0, strokeThickness: 0 }));
+        list.slice(start, start + 5).forEach((a, col) => {
+          const x = 160 + col * 108;
+          const g = this.add.graphics();
+          g.fillStyle(0x10151a, 1);
+          g.fillRoundedRect(x - 42, y - 42, 84, 84, 10);
+          g.lineStyle(3, t.color, 1);
+          g.strokeRoundedRect(x - 42, y - 42, 84, 84, 10);
+          const img = allyView(this, x, y + 10, a.id, 0.92);
+          const zone = this.add.zone(x, y, 84, 84).setInteractive({ useHandCursor: true });
+          zone.on('pointerup', () => {
+            detail.removeAll(true);
+            detail.add(text(this, W / 2, 996, `${a.name}  ·  ${t.name} ${a.role || KIND_LABEL[a.kind]}  ·  ${R.formatNum(a.price)}코인`, 26, t.text));
+            if (a.quote) detail.add(text(this, W / 2, 1032, `“${a.quote}”`, 21, '#ffd84a', { strokeThickness: 0, bold: false }));
+            detail.add(text(this, W / 2, a.quote ? 1064 : 1040, a.desc, 22, COLOR.text, { strokeThickness: 0, bold: false }));
+            detail.add(text(this, W / 2, a.quote ? 1096 : 1076, statsLine(a.kind, R.allyStats(a.id, 1)), 19, COLOR.dim, { strokeThickness: 0, bold: false }));
+          });
+          c.add([g, img, zone]);
         });
-        c.add([g, img, zone]);
-      });
+      }
     });
     c.add(detail);
     detail.add(text(this, W / 2, 1040, '아군을 눌러 보세요', 24, COLOR.dim, { strokeThickness: 0 }));

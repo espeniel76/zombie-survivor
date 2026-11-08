@@ -20,6 +20,32 @@ export function statsLine(kind, st) {
   if (kind === 'repair') return `초당 기지 수리 ${num(st.hps)}`;
   if (kind === 'money') return `${st.every}초마다 코인 ${st.coins}개`;
   if (kind === 'buff') return `바로 옆 칸 공격 속도 +${Math.round(st.rateBuff * 100)}%`;
+  // 전설·신화 영웅
+  const pct = v => `${Math.round(v * 100)}%`;
+  const sec = st.rate ? num(1 / st.rate) : 0;
+  switch (kind) {
+    case 'echo': return `옆 칸 공격을 ${pct(st.power)} 위력으로 한 번 더`;
+    case 'wisps': return `도깨비불 ${st.count}개씩(최대 ${st.max}) · 한 번 ${st.dmg}`;
+    case 'push': return `${sec}초마다 밀쳐 내기 · 피해 ${st.dmg} · 범위 ${st.range}`;
+    case 'bounce': return `폭탄 ${st.dmg} · ${st.bounces}번 튕김 · 사거리 ${st.range}`;
+    case 'swamp': return `늪 0.5초마다 ${st.dmg} · ${pct(st.slow)} 느리게 · 최대 ${st.max}개`;
+    case 'mirror': return `되갚기 ${st.dmg} + 맞은 피해×${st.mul} · 기지 피해 -${pct(st.guard)}`;
+    case 'sleep': return `${sec}초마다 재우기 ${st.time}초 · 깨울 때 피해 ×${st.wake}`;
+    case 'dice': return `피해 ${st.dmg}×(주사위÷2) · 6이면 모든 좀비 ${st.dmg * 3}`;
+    case 'decoy': return `허수아비 체력 ${st.hp} · ${st.time}초 · 터질 때 ${st.dmg}`;
+    case 'souls': return `영혼 ${st.need}개마다 강한 좀비 ${st.count}마리에 ${st.dmg}`;
+    case 'dragon': return `아기 용 불 초당 ${Math.round(st.dmg * st.rate)} · 기지 둘레 비행`;
+    case 'stone': return `시선 안 좀비가 돌로 · ${st.time}초 뒤 부서짐`;
+    case 'frog': return `${sec}초마다 ${st.count}마리 개구리로 · ${st.time}초 · 피해 ×${1 + st.vuln}`;
+    case 'ghost': return `쓰러질 때 ${pct(st.chance)} 확률로 유령 · 폭발 ${st.dmg}`;
+    case 'tornado': return `${sec}초마다 회오리 · 휩쓸린 좀비 0.5초마다 ${st.dmg}`;
+    case 'gravity': return `${sec}초마다 중력장 · 초당 ${st.dmg * 4} · 마무리 ${st.burst}`;
+    case 'pact': return `피해 ${st.dmg}~${st.dmg * st.maxMul} · 기지가 다칠수록 셈`;
+    case 'puppet': return `${sec}초마다 1마리 조종 · ${st.time}초 · 한 대 ${st.dmg}`;
+    case 'timestop': return `${sec}초마다 ${st.time}초 정지 · 정지 중 피해 +${pct(st.vuln)} · 모두 ${pct(st.slowAll)} 느림`;
+    case 'plague': return `초당 ${st.dmg} 역병 · 쓰러지면 주변으로 전염`;
+    default: break;
+  }
   const parts = [`피해 ${num(st.dmg)}${st.count > 1 ? ` ×${st.count}` : ''}`, `초당 ${num(st.rate)}회`];
   parts.push(st.range >= 1500 ? '사거리 맵 전체' : `사거리 ${st.range}`);
   if (st.radius) parts.push(`폭발 ${st.radius}`);
@@ -204,12 +230,26 @@ export class UIScene extends Phaser.Scene {
       const sel = k === this.shopTier;
       const b = button(this, x, 260, 100, 58, t.name, () => {
         this.shopTier = k;
+        this.shopPage = 0;
         this.refreshShop();
       }, { fill: sel ? t.color : 0x232b33, textColor: sel ? '#10151a' : t.text, size: 24 });
       this.shopTabs.add(b);
     });
     this.shopList.removeAll(true);
-    const list = ALLIES.filter(a => a.tier === this.shopTier);
+    // 한 쪽에 5명씩. 신화처럼 많으면 ◀ ▶ 로 넘긴다
+    const all = ALLIES.filter(a => a.tier === this.shopTier);
+    const pages = Math.ceil(all.length / 5);
+    this.shopPage = Math.min(this.shopPage || 0, pages - 1);
+    const list = all.slice(this.shopPage * 5, this.shopPage * 5 + 5);
+    if (pages > 1) {
+      const turn = d => {
+        this.shopPage = (this.shopPage + d + pages) % pages;
+        this.refreshShop();
+      };
+      this.shopList.add(button(this, W / 2 - 150, 1104, 96, 56, '◀', () => turn(-1), { fill: 0x3a4652, textColor: '#eef3ea', size: 26 }));
+      this.shopList.add(text(this, W / 2, 1104, `${this.shopPage + 1} / ${pages}`, 26, COLOR.text));
+      this.shopList.add(button(this, W / 2 + 150, 1104, 96, 56, '▶', () => turn(1), { fill: 0x3a4652, textColor: '#eef3ea', size: 26 }));
+    }
     list.forEach((a, k) => {
       const y = 386 + k * 150;
       const c = this.add.container(0, 0);

@@ -156,6 +156,229 @@ export class BootScene extends Phaser.Scene {
       g.fillStyle(0xe5534b, 1);
       g.fillTriangle(21, 1, 26, 5, 21, 9);
     });
+    this.drawHeroShots();
+    this.drawMythicSummons();
+  }
+
+  // 전설·신화 영웅 전용: 벌, 광대 폭탄, 지옥불, 역병 약병, 가시밭, 중력장
+  drawHeroShots() {
+    this.make_('wisp', 18, 26, (g) => {
+      // 도깨비불: 아래가 둥글고 위로 갈라지는 푸른 불꽃
+      g.fillStyle(0x2f7fd0, 0.35);
+      g.fillCircle(9, 17, 9);
+      g.fillStyle(0x6fd8ff, 1);
+      g.fillCircle(9, 17, 6);
+      g.fillTriangle(3, 16, 15, 16, 9, 1);
+      g.fillTriangle(4, 15, 9, 15, 3, 5);
+      g.fillStyle(0xe8fbff, 1);
+      g.fillCircle(9, 18, 3);
+      g.fillTriangle(7, 17, 11, 17, 9, 8);
+    });
+    this.make_('bomb', 22, 22, (g) => {
+      g.lineStyle(2, 0x8a6436, 1);
+      g.beginPath();
+      g.moveTo(14, 6);
+      g.lineTo(17, 2);
+      g.strokePath();
+      g.fillStyle(0xffb347, 1);
+      g.fillCircle(18, 2, 2);
+      g.fillStyle(0x2a2f45, 1);
+      g.lineStyle(2, DARK, 1);
+      g.fillCircle(10, 12, 8);
+      g.strokeCircle(10, 12, 8);
+      g.fillStyle(0xff7ad1, 1);
+      g.fillRect(3, 10.5, 14, 3);
+      g.fillStyle(0xffffff, 0.6);
+      g.fillCircle(7, 9, 2);
+    });
+    this.make_('hellfire', 26, 14, (g) => {
+      g.fillStyle(0x7a1020, 0.8);
+      g.fillTriangle(0, 7, 14, 1, 14, 13);
+      g.fillStyle(0xff3a2a, 1);
+      g.fillCircle(17, 7, 6);
+      g.fillTriangle(4, 7, 16, 2, 16, 12);
+      g.fillStyle(0xffc04a, 1);
+      g.fillCircle(18, 7, 3.4);
+    });
+    this.make_('flask', 14, 18, (g) => {
+      g.fillStyle(0xd7dde2, 1);
+      g.lineStyle(1.5, DARK, 1);
+      g.fillRect(5, 1, 4, 5);
+      g.strokeRect(5, 1, 4, 5);
+      g.fillStyle(0x7fdc4a, 1);
+      g.fillCircle(7, 11, 6);
+      g.strokeCircle(7, 11, 6);
+      g.fillStyle(0xffffff, 0.6);
+      g.fillCircle(5, 9, 1.6);
+    });
+    this.make_('swamp', 64, 64, (g) => {
+      // 늪: 탁한 초록 물웅덩이 + 거품
+      g.fillStyle(0x2a3a1a, 0.55);
+      g.fillCircle(32, 32, 31);
+      g.fillStyle(0x4a6a2a, 0.85);
+      g.fillCircle(32, 32, 25);
+      g.fillStyle(0x6a8a3a, 0.8);
+      g.fillEllipse(26, 28, 26, 16);
+      for (const [x, y, r] of [[22, 30, 3], [38, 24, 2.4], [40, 38, 3.4], [28, 40, 2], [34, 32, 1.6]]) {
+        g.lineStyle(1.5, 0xb8d890, 0.9);
+        g.strokeCircle(x, y, r);
+      }
+      g.lineStyle(2, 0x2a3a1a, 0.9);
+      g.strokeCircle(32, 32, 25);
+    });
+    this.make_('well', 128, 128, (g) => {
+      for (let i = 10; i >= 1; i--) {
+        g.fillStyle(i > 6 ? 0x3a2a7a : 0x1a1030, 0.12);
+        g.fillCircle(64, 64, i * 6.2);
+      }
+      // 소용돌이 팔(가만히 그려 두고 이미지가 천천히 돈다)
+      for (let arm = 0; arm < 3; arm++) {
+        g.lineStyle(3, 0x8a6cff, 0.7);
+        g.beginPath();
+        for (let t = 0; t <= 1; t += 0.05) {
+          const a = arm * ((Math.PI * 2) / 3) + t * 4;
+          const r = 8 + t * 52;
+          const x = 64 + Math.cos(a) * r;
+          const y = 64 + Math.sin(a) * r;
+          if (t === 0) g.moveTo(x, y);
+          else g.lineTo(x, y);
+        }
+        g.strokePath();
+      }
+      g.fillStyle(0x0a0614, 1);
+      g.fillCircle(64, 64, 9);
+      g.lineStyle(2, 0xc9b8ff, 0.8);
+      g.strokeCircle(64, 64, 11);
+    });
+  }
+
+  // 신화 영웅이 부르는 것들: 카드, 허수아비, 아기 용, 개구리, 유령, 회오리
+  drawMythicSummons() {
+    this.make_('card', 14, 18, (g) => {
+      g.fillStyle(0xffffff, 1);
+      g.lineStyle(1.5, DARK, 1);
+      g.fillRoundedRect(1, 1, 12, 16, 2);
+      g.strokeRoundedRect(1, 1, 12, 16, 2);
+      g.fillStyle(0xd1202e, 1);
+      g.fillCircle(5.5, 7.5, 2.2);
+      g.fillCircle(8.5, 7.5, 2.2);
+      g.fillTriangle(3.4, 8.4, 10.6, 8.4, 7, 12.6);
+    });
+    this.make_('scarecrow', 60, 76, (g) => {
+      g.fillStyle(0x000000, 0.25);
+      g.fillEllipse(30, 72, 34, 8);
+      g.lineStyle(3, DARK, 1);
+      g.fillStyle(0x8a6436, 1);
+      g.fillRect(27, 30, 6, 42);
+      g.strokeRect(27, 30, 6, 42);
+      g.fillRect(6, 34, 48, 6);
+      g.strokeRect(6, 34, 48, 6);
+      g.fillStyle(0xd9b25a, 1);
+      for (const x of [4, 52]) g.fillTriangle(x, 32, x + 4, 37, x, 42);
+      g.fillStyle(0x6a8ad0, 1);
+      g.fillRoundedRect(17, 38, 26, 20, 5);
+      g.strokeRoundedRect(17, 38, 26, 20, 5);
+      g.fillStyle(0xd9b25a, 1);
+      g.fillTriangle(18, 58, 24, 58, 21, 64);
+      g.fillTriangle(36, 58, 42, 58, 39, 64);
+      g.fillStyle(0xe8d8a8, 1);
+      g.fillCircle(30, 22, 12);
+      g.strokeCircle(30, 22, 12);
+      g.fillStyle(DARK, 1);
+      g.fillRect(24, 19, 4, 4);
+      g.fillRect(33, 19, 4, 4);
+      g.fillStyle(0xc9a24a, 1);
+      g.fillEllipse(30, 11, 34, 7);
+      g.fillRect(22, 1, 16, 10);
+      g.lineStyle(2, DARK, 1);
+      g.strokeEllipse(30, 11, 34, 7);
+      g.strokeRect(22, 1, 16, 10);
+      g.fillStyle(0xc8202e, 1);
+      g.fillRect(22, 7, 16, 3);
+    });
+    this.make_('dragon', 56, 44, (g) => {
+      // 오른쪽을 보는 동그란 아기 용
+      g.fillStyle(0x9a1a20, 1);
+      g.lineStyle(2, DARK, 1);
+      g.fillTriangle(16, 18, 4, 4, 26, 12);
+      g.strokeTriangle(16, 18, 4, 4, 26, 12);
+      g.fillTriangle(22, 16, 18, 0, 34, 12);
+      g.strokeTriangle(22, 16, 18, 0, 34, 12);
+      g.fillStyle(0xd8323c, 1);
+      g.fillTriangle(10, 30, 0, 38, 14, 36);
+      g.fillCircle(24, 28, 13);
+      g.strokeCircle(24, 28, 13);
+      g.fillStyle(0xffc860, 1);
+      g.fillEllipse(24, 33, 14, 8);
+      g.fillStyle(0xd8323c, 1);
+      g.fillCircle(38, 22, 10);
+      g.strokeCircle(38, 22, 10);
+      g.fillStyle(0xffe08a, 1);
+      g.fillTriangle(34, 13, 37, 4, 40, 13);
+      g.fillTriangle(40, 14, 45, 6, 45, 16);
+      g.fillStyle(0xffffff, 1);
+      g.fillCircle(41, 20, 4);
+      g.lineStyle(1.5, 0x5a0e12, 1);
+      g.strokeCircle(41, 20, 4);
+      g.fillStyle(0x5a0e12, 1);
+      g.fillCircle(48, 25, 1.2);
+    });
+    this.make_('frog', 40, 34, (g) => {
+      g.fillStyle(0x000000, 0.25);
+      g.fillEllipse(20, 31, 28, 6);
+      g.fillStyle(0x4fae5a, 1);
+      g.lineStyle(2, 0x1f4a24, 1);
+      g.fillEllipse(20, 21, 32, 22);
+      g.strokeEllipse(20, 21, 32, 22);
+      for (const x of [11, 29]) {
+        g.fillCircle(x, 10, 7);
+        g.strokeCircle(x, 10, 7);
+        g.fillStyle(0xffffff, 1);
+        g.fillCircle(x, 10, 4.5);
+        g.fillStyle(0x4fae5a, 1);
+      }
+      g.fillStyle(0x9be15d, 1);
+      g.fillEllipse(20, 26, 18, 8);
+      g.lineStyle(1.5, 0x1f4a24, 1);
+      g.beginPath();
+      g.arc(20, 20, 6, 0.3, Math.PI - 0.3, false);
+      g.strokePath();
+    });
+    this.make_('ghost', 34, 38, (g) => {
+      g.fillStyle(0xe8f0ff, 0.95);
+      g.lineStyle(2, 0x8a9ab8, 1);
+      g.beginPath();
+      g.arc(17, 15, 13, Math.PI, 0, false);
+      g.lineTo(30, 32);
+      g.lineTo(25, 28);
+      g.lineTo(21, 34);
+      g.lineTo(17, 29);
+      g.lineTo(13, 34);
+      g.lineTo(9, 28);
+      g.lineTo(4, 32);
+      g.closePath();
+      g.fillPath();
+      g.strokePath();
+      g.fillStyle(0x2a3048, 1);
+      g.fillEllipse(12, 15, 5, 7);
+      g.fillEllipse(22, 15, 5, 7);
+    });
+    this.make_('tornado', 70, 96, (g) => {
+      const rings = [[35, 88, 8], [34, 76, 13], [36, 62, 18], [33, 46, 23], [36, 30, 28], [35, 14, 32]];
+      rings.forEach(([x, y, r], k) => {
+        g.fillStyle(0xc8d8e4, 0.28);
+        g.fillEllipse(x, y, r * 2, r * 0.7);
+        g.lineStyle(2.5, k % 2 ? 0xffffff : 0xa8bccc, 0.85);
+        g.strokeEllipse(x, y, r * 2, r * 0.7);
+      });
+      g.lineStyle(1.5, 0xffffff, 0.6);
+      g.beginPath();
+      g.moveTo(20, 20);
+      g.lineTo(44, 40);
+      g.lineTo(26, 58);
+      g.lineTo(40, 78);
+      g.strokePath();
+    });
   }
 
   drawGround() {

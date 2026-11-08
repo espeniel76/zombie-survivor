@@ -60,6 +60,12 @@ export function allyStats(id, lv, rateBuff = 0) {
   if (s.poison) s.poison = Math.max(1, Math.round(s.poison * m));
   if (s.hps) s.hps = Math.max(1, Math.round(s.hps * m));
   if (s.coins) s.coins = Math.round(s.coins * m);
+  if (s.burst) s.burst = Math.round(s.burst * m);
+  if (s.hp) s.hp = Math.round(s.hp * m); // 허수아비 체력
+  // 영웅 전용 수치
+  if (s.power) s.power = Math.min(1, Math.round((s.power + 0.1 * (lv - 1)) * 100) / 100); // 메아리 위력
+  if (s.max) s.max += lv - 1; // 벌 최대 수, 가시밭 최대 수
+  if (s.slowAll) s.slowAll = Math.round((s.slowAll + 0.03 * (lv - 1)) * 100) / 100; // 시간 도둑: 모든 좀비 느리게
   if (s.rateBuff) s.rateBuff = s.rateBuff * (1 + 0.25 * (lv - 1));
   if (s.rate) s.rate = s.rate * (1 + rateBuff);
   return s;

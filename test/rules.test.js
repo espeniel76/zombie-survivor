@@ -17,8 +17,8 @@ describe('3×3 칸', () => {
 });
 
 describe('아군 목록', () => {
-  it('등급마다 5명씩, 이름과 설명이 있다', () => {
-    TIERS.forEach((_, t) => expect(ALLIES.filter(a => a.tier === t)).toHaveLength(5));
+  it('일반~전설은 5명씩, 신화는 15명, 모두 이름과 설명이 있다', () => {
+    TIERS.forEach((_, t) => expect(ALLIES.filter(a => a.tier === t)).toHaveLength(t === 5 ? 15 : 5));
     for (const a of ALLIES) {
       expect(a.name).toBeTruthy();
       expect(a.desc).toBeTruthy();
@@ -28,7 +28,8 @@ describe('아군 목록', () => {
   });
   it('공격하는 아군은 사거리와 공격 속도가 있다', () => {
     for (const a of ALLIES) {
-      if (['repair', 'money', 'buff'].includes(a.kind)) continue;
+      // 스스로 노려 쏘지 않는 아군(보조·패시브 영웅)
+      if (['repair', 'money', 'buff', 'echo', 'mirror', 'souls', 'dragon', 'ghost'].includes(a.kind)) continue;
       expect(a.stats.rate, a.id).toBeGreaterThan(0);
       expect(a.stats.range, a.id).toBeGreaterThan(0);
       expect(a.stats.dmg, a.id).toBeGreaterThan(0);
@@ -60,6 +61,22 @@ describe('강화와 판매', () => {
         }
       }
     }
+  });
+});
+
+describe('전설·신화 영웅', () => {
+  it('20명 모두 서로 다른 전투 방식(kind)을 가진다', () => {
+    const heroes = ALLIES.filter(a => a.hero);
+    expect(heroes).toHaveLength(20);
+    expect(new Set(heroes.map(a => a.kind)).size).toBe(20);
+    for (const a of heroes) {
+      expect(a.role, a.id).toBeTruthy();
+      expect(a.quote, a.id).toBeTruthy();
+    }
+  });
+  it('메아리 위력은 레벨마다 오르고 100%를 넘지 않는다', () => {
+    expect(allyStats('echo', 1).power).toBe(0.6);
+    expect(allyStats('echo', 5).power).toBe(1);
   });
 });
 

@@ -38,7 +38,7 @@ function drawField() {
       ctx.fillStyle = '#b39a6a'; ctx.beginPath(); ctx.ellipse(x, y, 12, 8, 0, 0, Math.PI * 2); ctx.fill();
     }
   }
-  const team = ['sniper', 'police', 'laser', 'firefighter', 'commander', 'tesla', 'medic', 'grenadier', 'orbital'];
+  const team = ['wisp', 'gravity', 'dragon', 'mirror', 'echo', 'gambler', 'frog', 'swamp', 'stone'];
   // 좀비들(사방에서 기지 쪽으로)
   const zs = [];
   const kinds = ['walker', 'walker', 'runner', 'walker', 'brute', 'spitter', 'walker', 'runner', 'walker', 'walker', 'spitter', 'runner'];
@@ -128,7 +128,7 @@ function drawGallery() {
 function drawCompare() {
   const root = document.getElementById('compare');
   const heroes = ALLIES.filter(a => a.hero);
-  for (const [label, outfit] of [['지금', false], ['새 옷', true]]) {
+  for (const [label, outfit] of [['새 영웅', true]]) {
     const row = document.createElement('div');
     row.className = 'row';
     const tag = document.createElement('div');

@@ -9,6 +9,7 @@ import { sfx } from '../core/sfx.js';
 import { W, H, FONT } from '../core/ui.js';
 import { TIERS } from '../data/allies.js';
 import { allyView, BODY_OY } from '../render/sprites.js';
+import { HeroSystem, PASSIVE_HEROES } from '../systems/heroes.js';
 
 export const CX = 360;
 export const CY = 650;
@@ -16,6 +17,7 @@ export const CELL = 92;
 export const GAP = 8;
 export const HALF = (CELL * 3 + GAP * 2) / 2; // 기지 반 폭 146
 const SPAWN_R = 680;
+const NEAR_ONLY = new Set(['flame', 'push', 'timestop', 'stone']);
 const ALLY_DY = 6; // 아군 몸 중심을 칸 가운데보다 살짝 아래로(모자 자리)
 
 export function cellPos(i) {
@@ -124,6 +126,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.rangeG = this.add.graphics().setDepth(4);
     this.lineG = this.add.graphics().setDepth(9);
+    this.heroes = new HeroSystem(this, { CX, CY, HALF, cellPos });
 
     this.applySpeed();
     this.scene.launch('UI');
@@ -310,7 +313,7 @@ export class GameScene extends Phaser.Scene {
       this.rangeG.lineStyle(3, 0xffffff, 0.45);
       this.rangeG.strokeCircle(p.x, p.y, st.range);
     }
-    if (kind === 'buff') {
+    if (kind === 'buff' || kind === 'echo') {
       for (const n of R.neighbors(i)) {
         const q = cellPos(n);
         this.rangeG.lineStyle(4, 0xffd84a, 0.9);
@@ -333,6 +336,7 @@ export class GameScene extends Phaser.Scene {
       u.st = R.allyStats(u.id, u.level, u.buff);
       if (u.aura) u.aura.setScale(u.st.range / 128);
     }
+    this.heroes?.refresh();
   }
 
   setSpeed(s) {
@@ -374,6 +378,7 @@ export class GameScene extends Phaser.Scene {
     // 화면에 남은 침은 치운다
     for (const s of this.spits) s.img.destroy();
     this.spits = [];
+    this.heroes.clearWave();
   }
 
   gameOver() {
@@ -412,6 +417,19 @@ export class GameScene extends Phaser.Scene {
     z.incoming = 0;
     z.attacking = false;
     z.spitT = 1 + Math.random() * 2;
+    // 영웅 능력 상태(조종·정지·밀려남·역병)
+    z.puppet = null;
+    z.frozenUntil = 0;
+    z.vuln = 0;
+    z.knockT = 0;
+    z.plague = null;
+    z.sleepUntil = 0;
+    z.wake = 0;
+    z.frogUntil = 0;
+    z.stone = 0;
+    z.petrified = 0;
+    z.caughtBy = null;
+    z.tornadoHit = 0;
     z.setOrigin(0.5, BODY_OY).setRotation(0).setFlipX(Math.cos(a + Math.PI) < 0);
     this.zombies.push(z);
     if (def.boss) {
@@ -447,6 +465,7 @@ export class GameScene extends Phaser.Scene {
 
     this.updateZombies(dt);
     this.updateAllies(dt);
+    this.heroes.update(dt);
     this.updateShots(dt);
     this.updateLobs(dt);
     this.updateStrikes(dt);
@@ -455,6 +474,10 @@ export class GameScene extends Phaser.Scene {
     this.drawLines(dt);
 
     if (this.zombies.some(z => z.dead)) this.zombies = this.zombies.filter(z => !z.dead);
+    if (this.phase === 'wave') {
+      this.heroes.releaseIfOnlyPuppets();
+      if (this.zombies.some(z => z.dead)) this.zombies = this.zombies.filter(z => !z.dead);
+    }
 
     if (this.phase === 'wave' && this.queue.length === 0 && this.zombies.length === 0) this.endWave();
     if (this.baseHp <= 0) this.gameOver();
@@ -467,15 +490,17 @@ export class GameScene extends Phaser.Scene {
       if (z.poisonUntil > this.t) this.hurt(z, z.poison * dt, { quiet: true });
       if (z.dead) continue;
       const slow = z.slowUntil > this.t ? z.slow : 0;
-      if (z.tinted && z.slowUntil <= this.t && z.poisonUntil <= this.t) {
+      if (z.tinted && z.slowUntil <= this.t && z.poisonUntil <= this.t && !this.heroes.holdsTint(z)) {
         z.tinted = false;
         z.clearTint();
       }
       const dx = CX - z.x;
       const dy = CY - z.y;
       const edge = Math.max(Math.abs(dx), Math.abs(dy)) - HALF;
-      z.setFlipX(dx < 0);
       z.setDepth((z.def.boss ? 5.5 : 5) + z.y * 1e-5);
+      // 영웅 능력에 붙잡힌 좀비(정지·중력장·밀려남·꼭두각시)는 스스로 못 움직인다
+      if (this.heroes.controls(z, dt)) continue;
+      z.setFlipX(dx < 0);
       const spit = z.def.spit;
       z.attacking = edge <= (spit ? spit.keep : z.r + 12);
       if (spit && edge <= spit.keep) {
@@ -490,14 +515,14 @@ export class GameScene extends Phaser.Scene {
         z.atkT -= dt * (1 - slow);
         if (z.atkT <= 0) {
           z.atkT = 1;
-          this.damageBase(z.dmg);
+          this.damageBase(z.dmg, z);
           const la = Math.atan2(dy, dx);
           this.tweens.add({ targets: z, x: z.x + Math.cos(la) * 6, y: z.y + Math.sin(la) * 6, duration: 80, yoyo: true });
         }
         continue;
       }
       const d = Math.hypot(dx, dy) || 1;
-      const v = z.def.speed * (1 - slow) * dt;
+      const v = z.def.speed * (1 - slow) * (1 - this.heroes.globalSlow) * dt;
       z.x += (dx / d) * v;
       z.y += (dy / d) * v;
     }
@@ -515,8 +540,8 @@ export class GameScene extends Phaser.Scene {
         if (d2 >= min * min || d2 === 0) continue;
         const d = Math.sqrt(d2);
         const push = (min - d) / d;
-        const wa = a.def.heavy ? 0.15 : 0.5;
-        const wb = b.def.heavy ? 0.15 : 0.5;
+        const wa = this.heroes.weight(a);
+        const wb = this.heroes.weight(b);
         a.x -= dx * push * wa;
         a.y -= dy * push * wa;
         b.x += dx * push * wb;
@@ -538,7 +563,7 @@ export class GameScene extends Phaser.Scene {
   enemySpit(z) {
     const img = this.add.image(z.x, z.y, 'spit').setDepth(7);
     const a = Math.atan2(CY - z.y, CX - z.x);
-    this.spits.push({ img, vx: Math.cos(a) * z.def.spit.speed, vy: Math.sin(a) * z.def.spit.speed, dmg: z.dmg });
+    this.spits.push({ img, vx: Math.cos(a) * z.def.spit.speed, vy: Math.sin(a) * z.def.spit.speed, dmg: z.dmg, from: z });
   }
 
   updateSpits(dt) {
@@ -546,7 +571,7 @@ export class GameScene extends Phaser.Scene {
       s.img.x += s.vx * dt;
       s.img.y += s.vy * dt;
       if (Math.max(Math.abs(s.img.x - CX), Math.abs(s.img.y - CY)) <= HALF + 10) {
-        this.damageBase(s.dmg);
+        this.damageBase(s.dmg, s.from);
         this.puff(s.img.x, s.img.y, 0.5, 0x9fd13a);
         s.img.destroy();
         s.done = true;
@@ -556,7 +581,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   // 기지 체력은 항상 정수(가장 작은 단위 1)
-  damageBase(n) {
+  // from = 때린 좀비(거울 기사가 되갚는다)
+  damageBase(n, from = null) {
+    n = this.heroes.onBaseHit(n, from);
     this.baseHp = Math.max(0, this.baseHp - Math.max(1, Math.round(n)));
     this.snd('hurt');
     if (this.save.settings.flash) this.cameras.main.shake(90, 0.004);
@@ -569,7 +596,7 @@ export class GameScene extends Phaser.Scene {
     const r2 = st.range * st.range;
     let fallback = null;
     for (const z of this.zombies) {
-      if (z.dead) continue;
+      if (z.dead || z.puppet || z.petrified) continue; // 꼭두각시는 우리 편, 돌은 곧 부서진다
       const dx = z.x - p.x;
       const dy = z.y - p.y;
       const d2 = dx * dx + dy * dy;
@@ -618,7 +645,7 @@ export class GameScene extends Phaser.Scene {
         }
         continue;
       }
-      if (a.kind === 'buff') continue;
+      if (a.kind === 'buff' || PASSIVE_HEROES.has(a.kind)) continue; // 메아리·거울·영혼·용·유령은 스스로 노리지 않는다
       u.cd -= dt;
       if (a.kind === 'aura') {
         if (u.cd <= 0) {
@@ -632,7 +659,8 @@ export class GameScene extends Phaser.Scene {
         }
         continue;
       }
-      const target = this.findTarget(p, a.kind === 'flame' ? { ...st, noReach: true } : st);
+      // 화염·밀쳐 내기·시간 정지는 정말 사거리 안에 좀비가 있을 때만 쓴다
+      const target = this.findTarget(p, NEAR_ONLY.has(a.kind) ? { ...st, noReach: true } : st);
       if (!target) {
         if (u.cd < 0) u.cd = 0;
         continue;
@@ -643,30 +671,37 @@ export class GameScene extends Phaser.Scene {
       if (u.cd <= 0) {
         u.cd += 1 / st.rate;
         if (u.cd < 0) u.cd = 0;
-        this.fire(u, a, st, p, target, ang);
+        this.fire(u, a, st, p, target, ang, i);
       }
     }
   }
 
-  fire(u, a, st, p, target, ang) {
+  // 총알 한 발. aim이 있으면 그 좀비에게 '날아가는 피해'로 잡아 둔다(헛방 줄이기).
+  shootBullet(mx, my, an, aim, st) {
+    const speed = st.speed || 620;
+    const img = this.add.image(mx, my, st.tex || 'bullet').setDepth(7).setRotation(an);
+    if (aim) aim.incoming += st.dmg;
+    this.shots.push({
+      img, aim, vx: Math.cos(an) * speed, vy: Math.sin(an) * speed, dmg: st.dmg, pierce: st.pierce || 1, hit: new Set(),
+      life: st.life || (Math.max(st.range, 560) / speed) * 1.25, slow: st.slow, slowTime: st.slowTime, poison: st.poison, poisonTime: st.poisonTime,
+      plague: st.plague ? { dps: st.poison, time: st.poisonTime, spread: st.spread } : null,
+      spin: st.spin || st.tex === 'pan' || st.tex === 'brick',
+    });
+  }
+
+  // i = 쏘는 칸. echo = 메아리술사가 따라 쏘는 것(메아리가 또 메아리치지 않게)
+  fire(u, a, st, p, target, ang, i, echo = false) {
     const mx = p.x + Math.cos(ang) * 30;
     const my = p.y + Math.sin(ang) * 30;
+    if (!echo) this.heroes.onAllyFire(i, a);
     switch (a.kind) {
       case 'bullet': {
         const n = st.count || 1;
-        const speed = st.speed || 620;
         for (let k = 0; k < n; k++) {
           let an = ang;
           if (n > 1) an += (k - (n - 1) / 2) * ((st.spread || 0.15) / Math.max(1, n - 1)) * (n > 2 ? 1 : 1.5);
           else if (st.spread) an += (Math.random() - 0.5) * st.spread;
-          const img = this.add.image(mx, my, st.tex || 'bullet').setDepth(7).setRotation(an);
-          const aim = k === Math.floor(n / 2) || n === 1 ? target : null;
-          if (aim) aim.incoming += st.dmg;
-          this.shots.push({
-            img, aim, vx: Math.cos(an) * speed, vy: Math.sin(an) * speed, dmg: st.dmg, pierce: st.pierce || 1, hit: new Set(),
-            life: st.life || (Math.max(st.range, 560) / speed) * 1.25, slow: st.slow, slowTime: st.slowTime, poison: st.poison, poisonTime: st.poisonTime,
-            spin: st.tex === 'pan' || st.tex === 'brick',
-          });
+          this.shootBullet(mx, my, an, k === Math.floor(n / 2) || n === 1 ? target : null, st);
         }
         this.snd(shotSound(a), p.x);
         break;
@@ -747,6 +782,8 @@ export class GameScene extends Phaser.Scene {
         break;
       }
       default:
+        // 전설·신화 영웅의 고유 능력
+        this.heroes.fire(u, a, st, p, target, ang, i);
         break;
     }
   }
@@ -772,7 +809,7 @@ export class GameScene extends Phaser.Scene {
           s.aim.incoming -= s.dmg;
           s.aim = null;
         }
-        this.hurt(z, s.dmg, { slow: s.slow, slowTime: s.slowTime, poison: s.poison, poisonTime: s.poisonTime });
+        this.hurt(z, s.dmg, { slow: s.slow, slowTime: s.slowTime, poison: s.poison, poisonTime: s.poisonTime, plague: s.plague });
         s.pierce--;
         if (s.pierce <= 0) {
           s.done = true;
@@ -803,6 +840,25 @@ export class GameScene extends Phaser.Scene {
         this.explode(l.tx, l.ty, l.radius, l.dmg, l.color, l.snd);
         l.img.destroy();
         l.done = true;
+        // 폭탄 광대: 가까운 다른 좀비에게 튕겨 간다
+        if (l.bounces > 0) {
+          l.hit.add(l.aim);
+          let next = null;
+          let nd = l.bounceRange;
+          for (const z of this.zombies) {
+            if (z.dead || z.puppet || l.hit.has(z)) continue;
+            const d = Math.hypot(z.x - l.tx, z.y - l.ty);
+            if (d < nd) {
+              nd = d;
+              next = z;
+            }
+          }
+          if (next) {
+            next.incoming += l.dmg;
+            const img = this.add.image(l.tx, l.ty, 'bomb').setDepth(7);
+            this.lobs.push({ ...l, img, aim: next, sx: l.tx, sy: l.ty, tx: next.x, ty: next.y, time: Math.max(0.22, nd / 420), el: 0, bounces: l.bounces - 1, done: false });
+          }
+        }
       }
     }
     if (this.lobs.some(l => l.done)) this.lobs = this.lobs.filter(l => !l.done);
@@ -893,19 +949,21 @@ export class GameScene extends Phaser.Scene {
 
   // ── 피해와 처치 ──
   hurt(z, amount, opts = {}) {
-    if (z.dead) return;
+    if (z.dead || z.puppet) return; // 꼭두각시는 실이 끊길 때까지 다치지 않는다
+    amount *= this.heroes.damageMul(z); // 시간 정지 중이면 더 아프다
     z.hp -= amount;
     if (opts.slow) {
       z.slow = Math.max(z.slowUntil > this.t ? z.slow : 0, opts.slow);
       z.slowUntil = this.t + opts.slowTime;
-      z.setTint(0xa8dcff);
+      z.setTint(opts.slowTint ?? 0xa8dcff);
       z.tinted = true;
     }
     if (opts.poison) {
       z.poison = opts.poison;
       z.poisonUntil = this.t + opts.poisonTime;
-      z.setTint(0xb9f07a);
+      z.setTint(opts.plague ? 0x7fdc4a : 0xb9f07a);
       z.tinted = true;
+      if (opts.plague) z.plague = opts.plague; // 역병: 쓰러지면 주변으로 옮는다
     }
     if (!opts.quiet && this.save.settings.numbers && amount >= 1) {
       this.floatText(z.x + (Math.random() - 0.5) * 16, z.y - z.r - 6, String(Math.round(amount)), '#ffffff', 20);
@@ -931,6 +989,9 @@ export class GameScene extends Phaser.Scene {
       this.boss = null;
       this.ui.banner('거대 좀비를 쓰러뜨렸어요!');
     }
+    this.heroes.onKill(z);
+    z.plague = null;
+    z.puppet = null;
     z.setVisible(false).setActive(false);
     this.zPool.push(z);
   }

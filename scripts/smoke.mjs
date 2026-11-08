@@ -49,7 +49,7 @@ await wait(300);
 await page.evaluate(() => {
   const g = window.__game.scene.getScene('Game');
   g.coins = 99999;
-  ['sniper', 'firefighter', 'electrician', 'commander', 'laser', 'mortar', 'tesla', 'grenadier'].forEach(id => g.buy(id));
+  ['sniper', 'firefighter', 'electrician', 'commander', 'echo', 'gravity', 'puppeteer', 'plague'].forEach(id => g.buy(id));
   g.setSpeed(3);
   g.skipBreak();
 });

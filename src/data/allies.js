@@ -45,37 +45,57 @@ export const ALLIES = [
   A('commander', '지휘관', 3, 'buff', { rateBuff: 0.3 }, { shirt: 0x3a4a6a, hat: 0xc8a43a, gun: 'radio' }, '옆 칸 아군의 공격이 30% 빨라집니다.'),
   A('flamer', '화염방사병', 3, 'flame', { dmg: 9, rate: 6, range: 165, arc: 60 }, { shirt: 0x8a3a2a, hat: 0x2a2a2a, gun: 'flame' }, '거대한 불길로 앞을 휩씁니다.'),
 
-  // ── 전설 ──
-  A('laser', '레이저 병사', 4, 'beam', { dmg: 45, rate: 0.75, range: 520, width: 18 }, { shirt: 0x3a5a8a, hat: 0x9fd4ff, gun: 'long', glow: 0x9fd4ff }, '일직선의 좀비를 모두 꿰뚫습니다.'),
-  A('mortar', '박격포병', 4, 'strike', { dmg: 70, rate: 0.35, range: 2000, radius: 95, delay: 0.9, target: 'far' }, { shirt: 0x6a5a3a, hat: 0x4a3a22, gun: 'tube' }, '맵 어디든 포탄을 떨어뜨립니다.'),
-  A('rocketeer', '로켓 사수', 4, 'splash', { dmg: 90, rate: 0.45, range: 420, radius: 85, tex: 'rocket', speed: 460 }, { shirt: 0x4a4a4a, hat: 0xd94a3a, gun: 'tube' }, '로켓 한 방으로 무리를 지웁니다.'),
-  A('tesla', '테슬라 기술자', 4, 'aura', { dmg: 16, rate: 1.6, range: 190 }, { shirt: 0x2a3a5a, hat: 0x5fb4ff, gun: 'staff', glow: 0x5fb4ff }, '주변 좀비를 모두 계속 감전시킵니다.'),
-  A('minigunner', '미니건 사수', 4, 'bullet', { dmg: 9, rate: 13, range: 320, spread: 0.1 }, { shirt: 0x5a3a2a, hat: 0x2a2a2a, gun: 'heavy' }, '쉬지 않고 총알을 퍼붓습니다.'),
+  // ── 전설: 저마다 전투 방식이 완전히 다른 영웅 ──
+  A('echo', '메아리술사', 4, 'echo', { power: 0.6 }, { shirt: 0x2aa198, gun: 'fork', glow: 0x7fffd4 }, '옆 칸 아군의 공격을 따라 합니다.'),
+  A('wisp', '도깨비불 술사', 4, 'wisps', { dmg: 6, rate: 0.8, range: 380, count: 2, max: 6, life: 5, speed: 230, sting: 0.5 }, { shirt: 0x1d2440, gun: 'talisman', glow: 0x6fd8ff }, '끝까지 쫓아가는 도깨비불을 띄웁니다.'),
+  A('magnetist', '자력술사', 4, 'push', { dmg: 30, rate: 0.25, range: 240, force: 220 }, { shirt: 0xd8323c, gun: 'magnet', glow: 0x6fa8ff }, '주변 좀비를 한꺼번에 밀쳐 냅니다.'),
+  A('clown', '폭탄 광대', 4, 'bounce', { dmg: 38, rate: 0.55, range: 360, radius: 55, bounces: 3, bounceRange: 200 }, { shirt: 0xf4f4f4, gun: 'bomb', glow: 0xff7ad1 }, '폭탄이 좀비 사이를 세 번 튕깁니다.'),
+  A('swamp', '늪지 마녀', 4, 'swamp', { dmg: 10, rate: 0.5, range: 320, radius: 42, life: 7, slow: 0.45, max: 5 }, { shirt: 0x4a5a2a, gun: 'broom', glow: 0x9be15d }, '좀비 발밑에 끈적한 늪을 만듭니다.'),
 
-  // ── 신화 ──
-  A('orbital', '궤도 포격 통신병', 5, 'strike', { dmg: 320, rate: 0.22, range: 2000, radius: 150, delay: 1.1, target: 'strong' }, { shirt: 0x2a2a3a, hat: 0xff1f1f, gun: 'radio', glow: 0xff1f1f }, '하늘에서 가장 강한 좀비를 폭격!'),
-  A('plasma', '플라즈마 병사', 5, 'beam', { dmg: 130, rate: 0.8, range: 640, width: 26 }, { shirt: 0x5a2a7a, hat: 0xd28aff, gun: 'long', glow: 0xd28aff }, '모든 것을 꿰뚫는 플라즈마를 쏩니다.'),
-  A('blizzard', '눈보라 기술자', 5, 'aura', { dmg: 14, rate: 2, range: 250, slow: 0.5, slowTime: 1 }, { shirt: 0xd8f0ff, hat: 0x8ac8e8, gun: 'staff', glow: 0xd8f0ff }, '주변 좀비를 얼려 느리게 만듭니다.'),
-  A('merchant', '황금 상인', 5, 'money', { coins: 30, every: 2 }, { shirt: 0xffc83d, hat: 0xffe08a, gun: 'bag', glow: 0xffc83d }, '2초마다 코인 30개를 벌어 옵니다.', 0.8),
-  A('lastsurvivor', '최후의 생존자', 5, 'bullet', { dmg: 42, rate: 3, range: 380, count: 3, spread: 0.18, pierce: 3, speed: 820 }, { shirt: 0x8a2a2a, hat: 0x2a2a2a, gun: 'heavy', glow: 0xff1f1f }, '세 발씩, 셋을 꿰뚫는 전설의 사격.'),
+  // ── 신화: 규칙 자체를 바꾸는 영웅 ──
+  A('gravity', '중력 조종자', 5, 'gravity', { dmg: 14, rate: 0.17, range: 460, radius: 115, time: 2.6, burst: 160, pull: 170 }, { shirt: 0x3a2a7a, gun: 'orb', glow: 0x8a6cff }, '중력장으로 좀비 떼를 빨아들입니다.'),
+  A('demon', '악마 계약자', 5, 'pact', { dmg: 70, rate: 0.9, range: 440, pierce: 3, speed: 760, maxMul: 3 }, { shirt: 0x7a1020, gun: 'scroll', glow: 0xff1f1f }, '기지가 다칠수록 지옥불이 세집니다.'),
+  A('puppeteer', '꼭두각시 인형사', 5, 'puppet', { dmg: 40, rate: 0.2, range: 400, time: 7 }, { shirt: 0x5a2a6a, gun: 'cross', glow: 0xd28aff }, '좀비를 조종해 서로 싸우게 합니다.'),
+  A('timethief', '시간 도둑', 5, 'timestop', { dmg: 20, rate: 0.12, range: 320, time: 2.2, vuln: 0.6, slowAll: 0.15 }, { shirt: 0x1f4a5a, gun: 'watch', glow: 0x5fe0ff }, '시간을 훔쳐 좀비를 멈춰 세웁니다.'),
+  A('mirror', '거울 기사', 5, 'mirror', { dmg: 25, mul: 6, guard: 0.2 }, { shirt: 0x9fb8d0, gun: 'mirror', glow: 0xbfe9ff }, '기지를 때린 좀비에게 되갚아 줍니다.'),
+  A('dream', '꿈의 요정', 5, 'sleep', { dmg: 10, rate: 0.2, range: 380, radius: 110, time: 6, wake: 3 }, { shirt: 0xf2a8d8, gun: 'wand', glow: 0xffb8f0 }, '재운 좀비를 깨우며 세 배로 때립니다.'),
+  A('gambler', '운명의 도박사', 5, 'dice', { dmg: 45, rate: 1.1, range: 420, speed: 760 }, { shirt: 0x2a5a3a, gun: 'dice', glow: 0xffd84a }, '주사위를 굴려 6이 나오면 대박!'),
+  A('scarecrow', '허수아비 술사', 5, 'decoy', { dmg: 120, rate: 0.14, range: 380, hp: 320, time: 9, radius: 170 }, { shirt: 0xb08a4a, gun: 'pitchfork', glow: 0xffc860 }, '허수아비를 세워 좀비를 꾀어냅니다.'),
+  A('souls', '영혼 수집가', 5, 'souls', { dmg: 90, need: 10, count: 6 }, { shirt: 0x2a3a3a, gun: 'jar', glow: 0x9fffd0 }, '모은 영혼을 한꺼번에 쏟아 냅니다.'),
+  A('dragon', '용 조련사', 5, 'dragon', { dmg: 10, rate: 6, range: 130, orbit: 270, spin: 0.9 }, { shirt: 0xc8202e, gun: 'horn', glow: 0xff8a3a }, '아기 용이 날아다니며 불을 뿜어요.'),
+  A('stone', '석화의 눈', 5, 'stone', { dmg: 4, rate: 2, range: 330, arc: 70, build: 0.22, time: 6 }, { shirt: 0x6a7a5a, gun: 'shield', glow: 0xc9c2a0 }, '바라본 좀비를 돌로 만들어 버립니다.'),
+  A('frog', '개구리 마법사', 5, 'frog', { dmg: 10, rate: 0.35, range: 380, count: 4, time: 5, vuln: 1, radius: 150 }, { shirt: 0x4fae5a, gun: 'lilystaff', glow: 0x9be15d }, '좀비 무리를 개구리로 바꿔 버립니다.'),
+  A('ghost', '유령 소환사', 5, 'ghost', { dmg: 60, chance: 0.35, radius: 60 }, { shirt: 0xd8dde8, gun: 'bell', glow: 0xe8f0ff }, '쓰러진 좀비가 유령이 되어 돌진!'),
+  A('tornado', '회오리 술사', 5, 'tornado', { dmg: 25, rate: 0.2, range: 420, speed: 150, life: 3.5, radius: 52 }, { shirt: 0x7a9ab0, gun: 'fan', glow: 0xd7eef8 }, '회오리로 좀비를 휩쓸어 버립니다.'),
+  A('plague', '역병 의사', 5, 'plague', { dmg: 16, rate: 1, range: 340, time: 4, spread: 95, speed: 520 }, { shirt: 0x22262c, gun: 'lantern', glow: 0x7fdc4a }, '쓰러진 좀비가 역병을 옮깁니다.'),
 ];
 
-// 전설·신화는 직업 대신 고유한 이름을 갖는다. role = 원래 직업(상점에 작게 표시), quote = 한 줄 대사.
+// 전설·신화 영웅: role = 상점에 작게 나오는 능력 이름, quote = 한 줄 대사.
 export const HEROES = {
-  laser: { name: '스펙트럼 나이트', quote: '빛은 한 줄로, 끝까지 간다.' },
-  mortar: { name: '그라운드 브레이커', quote: '어디에 숨든, 하늘에서 떨어진다.' },
-  rocketeer: { name: '크림슨 레인저', quote: '붉은 꼬리가 지나가면 길이 열린다.' },
-  tesla: { name: '볼트 위버', quote: '들어오는 건 자유, 나가는 건 아니고.' },
-  minigunner: { name: '리드 스톰', quote: '멈추는 법은 배운 적 없다.' },
-  orbital: { name: '제니스', quote: '좌표 확인. 하늘이 대답한다.' },
-  plasma: { name: '보이드 랜서', quote: '꿰뚫지 못할 것은 없다.' },
-  blizzard: { name: '아이스마스터', quote: '이 겨울은 내가 끝낼 때 끝난다.' },
-  merchant: { name: '골든 바론', quote: '전쟁도 결국 장사지.' },
-  lastsurvivor: { name: '루나 헌터', quote: '마지막까지 서 있는 건 언제나 나.' },
+  echo: { role: '메아리', quote: '네가 한 번 쏘면, 나는 한 번 더.' },
+  wisp: { role: '도깨비불', quote: '불을 끄려 해 봐. 쫓아가는 건 불 쪽이니까.' },
+  magnetist: { role: '밀어내기', quote: '같은 극끼리는 만날 수 없지.' },
+  clown: { role: '튕기는 폭탄', quote: '박수는 세 번째 폭발 뒤에.' },
+  swamp: { role: '늪', quote: '한 발짝만 더. 그다음은 늪이 알아서 해.' },
+  gravity: { role: '중력장', quote: '모든 것은 결국 한 점으로 떨어진다.' },
+  demon: { role: '피의 계약', quote: '대가는 이미 치렀다. 이제 내 차례.' },
+  puppeteer: { role: '조종', quote: '실 끝에 매달린 건 너희 쪽이야.' },
+  timethief: { role: '시간 정지', quote: '1초면 충분해. 너희 1초는 내 거니까.' },
+  plague: { role: '전염', quote: '한 마리면 충분하다. 나머지는 알아서 옮는다.' },
+  mirror: { role: '반사', quote: '네가 휘두른 그대로 돌려주지.' },
+  dream: { role: '잠', quote: '쉿, 착하지. 깰 때 조금 아플 거야.' },
+  gambler: { role: '주사위', quote: '인생은 한 판. 오늘은 6이 나올 것 같은데?' },
+  scarecrow: { role: '미끼', quote: '저기 맛있는 게 있네. 가 봐.' },
+  souls: { role: '영혼', quote: '쓰러진 자는 모두 내 병 속으로.' },
+  dragon: { role: '아기 용', quote: '작아도 용이야. 불은 진짜라고.' },
+  stone: { role: '석화', quote: '눈을 마주친 순간, 끝이야.' },
+  frog: { role: '변신', quote: '개굴. 그게 너희가 할 수 있는 말의 전부야.' },
+  ghost: { role: '유령', quote: '쓰러져도 끝이 아니야. 이제 내 편이지.' },
+  tornado: { role: '회오리', quote: '바람이 데려가는 곳이 너희 무덤이야.' },
 };
 for (const a of ALLIES) {
   const h = HEROES[a.id];
-  if (h) Object.assign(a, { role: a.name, name: h.name, quote: h.quote, hero: true });
+  if (h) Object.assign(a, { role: h.role, quote: h.quote, hero: true });
 }
 
 export const ALLY = Object.fromEntries(ALLIES.map(a => [a.id, a]));
