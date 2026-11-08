@@ -4,7 +4,7 @@ import { TitleScene } from './scenes/TitleScene.js';
 import { GameScene } from './scenes/GameScene.js';
 import { UIScene } from './scenes/UIScene.js';
 import { W, H, COLOR } from './core/ui.js';
-import { unlockAudio } from './core/sfx.js';
+import { unlockAudio, bakeSounds } from './core/sfx.js';
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -18,6 +18,8 @@ const game = new Phaser.Game({
   scene: [BootScene, TitleScene, GameScene, UIScene],
 });
 
+// 효과음은 시작하자마자 미리 구워 둔다(소리 장치 허락 없이도 가능)
+bakeSounds();
 window.addEventListener('pointerdown', unlockAudio, { passive: true });
 window.addEventListener('keydown', unlockAudio);
 

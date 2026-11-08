@@ -22,6 +22,45 @@ export function cellPos(i) {
   return { x: CX + ((i % 3) - 1) * (CELL + GAP), y: CY + (Math.floor(i / 3) - 1) * (CELL + GAP) };
 }
 
+// 아군이 쏠 때 나는 소리(무기마다 다르게)
+function shotSound(a) {
+  const st = a.stats;
+  switch (a.kind) {
+    case 'bullet':
+      if (st.tex === 'pellet') return (st.count || 1) >= 5 ? 'shotgun' : 'sling';
+      if (st.tex === 'arrow') return 'bow';
+      if (st.tex === 'pan') return 'swish';
+      if (st.tex === 'spit') return 'dart';
+      if (st.tex === 'ice') return 'icegun';
+      if (a.look.gun === 'long') return 'sniper';
+      if (a.look.gun === 'heavy') return st.rate >= 5 ? 'mg' : 'rifle';
+      if (a.look.gun === 'rifle') return 'rifle';
+      return 'pistol';
+    case 'splash':
+      return { brick: 'swish', firework: 'firework', rocket: 'rocket' }[st.tex] || 'launch';
+    case 'strike':
+      return st.radius >= 120 ? 'radio' : 'mortar';
+    case 'flame':
+      return 'flame';
+    case 'beam':
+      return st.width >= 24 ? 'plasma' : 'laser';
+    case 'chain':
+      return 'zap';
+    case 'aura':
+      return st.slow ? 'frost' : 'tesla';
+    default:
+      return null;
+  }
+}
+
+// 던진 것·폭격이 떨어질 때 나는 소리
+function landSound(a) {
+  const st = a.stats;
+  if (st.tex === 'brick') return 'impact';
+  if (st.tex === 'firework') return 'sparkle';
+  return st.radius >= 120 ? 'bigboom' : 'boom';
+}
+
 function seeded(seed) {
   let s = seed >>> 0;
   return () => {
@@ -168,7 +207,7 @@ export class GameScene extends Phaser.Scene {
           if (u) this.placeSprite(k, u);
         }
         this.refreshStats();
-        sfx('click');
+        this.snd('click');
         this.ui.toast('자리를 옮겼어요');
       }
       for (let k = 0; k < 9; k++) this.drawCell(k);
@@ -193,7 +232,7 @@ export class GameScene extends Phaser.Scene {
     this.placeSprite(i, u);
     this.refreshStats();
     this.drawCell(i);
-    sfx('coin');
+    this.snd('coin');
     return { ok: true, cell: i, msg: `${a.name} 배치 완료!` };
   }
 
@@ -237,7 +276,7 @@ export class GameScene extends Phaser.Scene {
     this.refreshStats();
     this.drawCell(i);
     this.tweens.add({ targets: u.sprite, scale: 1.15, duration: 120, yoyo: true });
-    sfx('level');
+    this.snd('level');
     return { ok: true, msg: `${ALLY[u.id].name} Lv${u.level}!` };
   }
 
@@ -247,7 +286,7 @@ export class GameScene extends Phaser.Scene {
     const price = R.sellPrice(u.id, u.level);
     this.coins += price;
     this.removeAlly(i);
-    sfx('coin');
+    this.snd('coin');
     return { ok: true, msg: `${price}코인에 팔았어요` };
   }
 
@@ -319,7 +358,7 @@ export class GameScene extends Phaser.Scene {
     if (this.spec.boss) this.queue.splice(Math.floor(this.queue.length * 0.3), 0, 'boss');
     this.spawnT = 0;
     this.ui.banner(this.spec.boss ? `웨이브 ${this.wave} · 거대 좀비 등장!` : `웨이브 ${this.wave}`);
-    sfx(this.spec.boss ? 'boss' : 'warn');
+    this.snd(this.spec.boss ? 'boss' : 'wave');
   }
 
   endWave() {
@@ -331,7 +370,7 @@ export class GameScene extends Phaser.Scene {
     this.baseHp = Math.min(this.baseMax, this.baseHp + fix);
     this.ui.banner(`웨이브 ${this.wave} 막아냄!  +${bonus}코인${fix > 0 ? `
 기지 수리 +${fix}` : ''}`);
-    sfx('win');
+    this.snd('win');
     // 화면에 남은 침은 치운다
     for (const s of this.spits) s.img.destroy();
     this.spits = [];
@@ -346,7 +385,7 @@ export class GameScene extends Phaser.Scene {
     best.wave = Math.max(best.wave || 0, cleared);
     best.kills = Math.max(best.kills || 0, this.kills);
     writeSave();
-    sfx('lose');
+    this.snd('lose');
     this.ui.showResult({ wave: this.wave, cleared, kills: this.kills, newBest });
   }
 
@@ -519,7 +558,7 @@ export class GameScene extends Phaser.Scene {
   // 기지 체력은 항상 정수(가장 작은 단위 1)
   damageBase(n) {
     this.baseHp = Math.max(0, this.baseHp - Math.max(1, Math.round(n)));
-    sfx('hurt');
+    this.snd('hurt');
     if (this.save.settings.flash) this.cameras.main.shake(90, 0.004);
   }
 
@@ -588,7 +627,7 @@ export class GameScene extends Phaser.Scene {
             u.cd = 1 / st.rate;
             for (const z of hit.slice(0, 12)) this.lines.push({ pts: this.zigzag(p.x, p.y, z.x, z.y), color: a.look.glow, width: 2, life: 0.25, max: 0.25 });
             for (const z of hit) this.hurt(z, st.dmg, { slow: st.slow, slowTime: st.slowTime });
-            sfx('zap');
+            this.snd(shotSound(a), p.x);
           }
         }
         continue;
@@ -629,7 +668,7 @@ export class GameScene extends Phaser.Scene {
             spin: st.tex === 'pan' || st.tex === 'brick',
           });
         }
-        sfx(n >= 5 ? 'shotgun' : 'shoot');
+        this.snd(shotSound(a), p.x);
         break;
       }
       case 'splash': {
@@ -639,14 +678,14 @@ export class GameScene extends Phaser.Scene {
         const time = Math.max(0.15, Math.hypot(tx - mx, ty - my) / speed);
         const img = this.add.image(mx, my, st.tex || 'grenade').setDepth(7).setRotation(ang);
         target.incoming += st.dmg;
-        this.lobs.push({ img, aim: target, sx: mx, sy: my, tx, ty, time, el: 0, dmg: st.dmg, radius: st.radius, spin: st.tex !== 'rocket' && st.tex !== 'firework', color: st.tex === 'firework' ? 0xff7ad1 : 0xffa040 });
-        sfx('throw');
+        this.lobs.push({ img, aim: target, sx: mx, sy: my, tx, ty, time, el: 0, dmg: st.dmg, radius: st.radius, spin: st.tex !== 'rocket' && st.tex !== 'firework', color: st.tex === 'firework' ? 0xff7ad1 : 0xffa040, snd: landSound(a) });
+        this.snd(shotSound(a), p.x);
         break;
       }
       case 'strike': {
         const ring = this.add.image(target.x, target.y, 'ring').setDepth(4.5).setTint(0xff6a5a).setAlpha(0.7).setScale(0.2);
-        this.strikes.push({ target, x: target.x, y: target.y, el: 0, delay: st.delay, dmg: st.dmg, radius: st.radius, ring });
-        sfx('warn');
+        this.strikes.push({ target, x: target.x, y: target.y, el: 0, delay: st.delay, dmg: st.dmg, radius: st.radius, ring, snd: landSound(a) });
+        this.snd(shotSound(a), p.x);
         break;
       }
       case 'flame': {
@@ -663,7 +702,7 @@ export class GameScene extends Phaser.Scene {
           const img = this.add.image(mx, my, 'fire').setDepth(6.5).setScale(0.12).setAlpha(0.85);
           this.flames.push({ img, vx: Math.cos(an) * st.range * 2.6, vy: Math.sin(an) * st.range * 2.6, life: 0.36, max: 0.36 });
         }
-        sfx('fire');
+        this.snd('flame', p.x);
         break;
       }
       case 'beam': {
@@ -676,7 +715,7 @@ export class GameScene extends Phaser.Scene {
         }
         this.lines.push({ pts: [mx, my, ex, ey], color: a.look.glow || 0xffffff, width: st.width * 0.6, life: 0.3, max: 0.3 });
         this.lines.push({ pts: [mx, my, ex, ey], color: 0xffffff, width: st.width * 0.2, life: 0.2, max: 0.2 });
-        sfx('beam');
+        this.snd(shotSound(a), p.x);
         break;
       }
       case 'chain': {
@@ -704,7 +743,7 @@ export class GameScene extends Phaser.Scene {
           }
           cur = next;
         }
-        sfx('zap');
+        this.snd('zap', p.x);
         break;
       }
       default:
@@ -761,7 +800,7 @@ export class GameScene extends Phaser.Scene {
       if (l.spin) l.img.rotation += 10 * dt;
       if (k >= 1) {
         l.aim.incoming -= l.dmg;
-        this.explode(l.tx, l.ty, l.radius, l.dmg, l.color);
+        this.explode(l.tx, l.ty, l.radius, l.dmg, l.color, l.snd);
         l.img.destroy();
         l.done = true;
       }
@@ -779,7 +818,7 @@ export class GameScene extends Phaser.Scene {
       }
       s.ring.setPosition(s.x, s.y).setScale(((s.radius / 30) * (0.3 + 0.7 * k)));
       if (k >= 1) {
-        this.explode(s.x, s.y, s.radius, s.dmg, 0xff6a3a);
+        this.explode(s.x, s.y, s.radius, s.dmg, 0xff6a3a, s.snd);
         s.ring.destroy();
         s.done = true;
       }
@@ -802,7 +841,7 @@ export class GameScene extends Phaser.Scene {
     if (this.flames.some(f => f.done)) this.flames = this.flames.filter(f => !f.done);
   }
 
-  explode(x, y, radius, dmg, color) {
+  explode(x, y, radius, dmg, color, snd = 'boom') {
     for (const z of this.zombies) {
       if (z.dead) continue;
       if (Math.hypot(z.x - x, z.y - y) <= radius + z.r * 0.5) this.hurt(z, dmg);
@@ -813,7 +852,12 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: fill, scale: (radius / 20) * 1.1, alpha: 0, duration: 420, ease: 'Quad.Out', onComplete: () => fill.destroy() });
     this.tweens.add({ targets: ring, scale: radius / 30, alpha: 0, duration: 360, ease: 'Quad.Out', onComplete: () => ring.destroy() });
     if (this.save.settings.flash && radius >= 80) this.cameras.main.shake(120, 0.006);
-    sfx('boom');
+    this.snd(snd, x);
+  }
+
+  // 효과음. x를 주면 화면 좌우 위치에 따라 소리도 좌우로 살짝 치우친다.
+  snd(name, x) {
+    if (name) sfx(name, x == null ? 0 : (x - CX) / CX);
   }
 
   zigzag(x1, y1, x2, y2) {
@@ -882,7 +926,7 @@ export class GameScene extends Phaser.Scene {
     this.kills++;
     this.puff(z.x, z.y, z.r / 14, 0xb8bfc4);
     if (this.save.settings.numbers || z.def.boss) this.floatText(z.x, z.y - 8, `+${reward}`, '#ffd84a', z.def.boss ? 34 : 18, true);
-    sfx('pop');
+    this.snd(z.def.boss ? 'bosspoof' : 'poof', z.x);
     if (z === this.boss) {
       this.boss = null;
       this.ui.banner('거대 좀비를 쓰러뜨렸어요!');

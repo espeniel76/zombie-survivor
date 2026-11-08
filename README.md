@@ -20,6 +20,9 @@ npm run dev        # http://localhost:5181
 | `npm run build` | `dist/`로 배포용 빌드 |
 | `npm run smoke` | (dev 서버를 켠 뒤) Edge를 화면 없이 띄워 한 판 굴리고 `shots/`에 화면 저장 |
 | `node scripts/autoplay.mjs 300` | 단순한 자동 플레이로 몇 웨이브까지 가는지 확인(균형 점검용) |
+| `node scripts/sound-check.mjs` | (dev 서버를 켠 뒤) 모든 효과음을 구워 보고 길이·크기를 표로 확인 |
+
+효과음은 dev 서버를 켠 뒤 http://localhost:5181/sounds.html 에서 하나씩 들어 볼 수 있다.
 
 ## 규칙 요약
 
@@ -36,6 +39,7 @@ npm run dev        # http://localhost:5181
 src/data/allies.js    아군 등급과 30명 목록(수치·생김새·설명)
 src/data/zombies.js   좀비 5종
 src/core/rules.js     순수 규칙(테스트 대상)
+src/core/sfx.js       효과음(파일 없이 합성 → 미리 구워 두고 재생, 압축기·공간 울림)
 src/render/blob.js    동그라미 캐릭터(몸·하얀 눈·모자·무기) 그리기 — 게임과 mockup.html이 같이 씀
 src/render/sprites.js 캐릭터 텍스처 생성, 아군 묶음(몸 + 좀비 쪽으로 기우는 무기)
 src/scenes/Boot       그 밖의 그림(총알, 효과, 바닥, 소품)을 코드로 그려 텍스처 생성
