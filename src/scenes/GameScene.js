@@ -10,6 +10,7 @@ import { W, H, FONT } from '../core/ui.js';
 import { TIERS } from '../data/allies.js';
 import { allyView, BODY_OY } from '../render/sprites.js';
 import { HeroSystem, PASSIVE_HEROES } from '../systems/heroes.js';
+import { chapterAt } from '../data/story.js';
 
 export const CX = 360;
 export const CY = 650;
@@ -17,6 +18,7 @@ export const CELL = 92;
 export const GAP = 8;
 export const HALF = (CELL * 3 + GAP * 2) / 2; // 기지 반 폭 146
 const SPAWN_R = 680;
+const TRIAL_COINS = 200000;
 const NEAR_ONLY = new Set(['flame', 'push', 'timestop', 'stone']);
 const ALLY_DY = 6; // 아군 몸 중심을 칸 가운데보다 살짝 아래로(모자 자리)
 
@@ -76,14 +78,16 @@ export class GameScene extends Phaser.Scene {
     super('Game');
   }
 
-  create() {
+  // data.trial = 체험 모드: 코인 넉넉히, 각성 게이지 4배 빠르게, 기록은 남기지 않음
+  create(data) {
+    this.trial = !!data?.trial;
     this.save = loadSave();
     this.speed = 1;
     this.t = 0;
     this.wave = 0;
     this.phase = 'break';
     this.phaseLeft = 30;
-    this.coins = R.START_COINS;
+    this.coins = this.trial ? TRIAL_COINS : R.START_COINS;
     this.baseMax = R.BASE_HP;
     this.baseHp = R.BASE_HP;
     this.kills = 0;
@@ -216,7 +220,13 @@ export class GameScene extends Phaser.Scene {
       for (let k = 0; k < 9; k++) this.drawCell(k);
       return;
     }
-    if (this.cells[i]) this.ui.openAllyPanel(i);
+    const u = this.cells[i];
+    // 각성 게이지가 가득 찬 영웅을 누르면 바로 각성
+    if (u && ALLY[u.id].hero && u.gauge >= 100 && this.phase === 'wave') {
+      this.awaken(i);
+      return;
+    }
+    if (u) this.ui.openAllyPanel(i);
     else this.ui.openShop(i);
   }
 
@@ -236,7 +246,7 @@ export class GameScene extends Phaser.Scene {
     this.refreshStats();
     this.drawCell(i);
     this.snd('coin');
-    return { ok: true, cell: i, msg: `${a.name} 배치 완료!` };
+    return { ok: true, cell: i, hero: !!a.hero, msg: `${a.name} 배치 완료!` };
   }
 
   placeSprite(i, u) {
@@ -334,9 +344,44 @@ export class GameScene extends Phaser.Scene {
       if (!u) continue;
       u.buff = R.rateBuffAt(this.cells, i);
       u.st = R.allyStats(u.id, u.level, u.buff);
+      if (ALLY[u.id].hero && u.awakeUntil > this.t) u.st = R.awakenStats(u.st); // 각성 중
       if (u.aura) u.aura.setScale(u.st.range / 128);
     }
     this.heroes?.refresh();
+  }
+
+  // ── 각성 ──
+  // 웨이브 중에 영웅의 게이지가 차오르고, 가득 차면 눌러서 각성한다(8초 동안 능력 폭주)
+  updateAwaken(dt) {
+    let changed = false;
+    for (let i = 0; i < 9; i++) {
+      const u = this.cells[i];
+      if (!u || !ALLY[u.id].hero) continue;
+      if (u.awakeUntil && this.t >= u.awakeUntil) {
+        u.awakeUntil = 0;
+        changed = true;
+        this.tweens.add({ targets: u.sprite, scale: 1, duration: 300 });
+      }
+      if (this.phase !== 'wave' || u.awakeUntil) continue;
+      const before = u.gauge || 0;
+      u.gauge = Math.min(100, before + ((dt * 100) / R.AWAKEN_CHARGE) * (this.trial ? 4 : 1));
+      if (before < 100 && u.gauge >= 100) {
+        this.snd('sparkle', cellPos(i).x);
+        this.ui.toast(`${ALLY[u.id].name} 각성 준비! 눌러서 각성`);
+      }
+    }
+    if (changed) this.refreshStats();
+  }
+
+  awaken(i) {
+    const u = this.cells[i];
+    u.gauge = 0;
+    u.awakeUntil = this.t + R.AWAKEN_TIME;
+    this.refreshStats();
+    this.tweens.add({ targets: u.sprite, scale: 1.18, duration: 250, ease: 'Back.Out' });
+    this.ui.heroCutIn(u.id, '각성');
+    this.heroes.awakenBurst(u, i);
+    this.snd('bigboom', cellPos(i).x);
   }
 
   setSpeed(s) {
@@ -362,6 +407,13 @@ export class GameScene extends Phaser.Scene {
     if (this.spec.boss) this.queue.splice(Math.floor(this.queue.length * 0.3), 0, 'boss');
     this.spawnT = 0;
     this.ui.banner(this.spec.boss ? `웨이브 ${this.wave} · 거대 좀비 등장!` : `웨이브 ${this.wave}`);
+    // 이야기: 이 웨이브에 장이 있고 아직 못 봤으면 배너 뒤에 보여 준다
+    const ch = chapterAt(this.wave);
+    if (ch && !this.save.story.seen.includes(ch.wave)) {
+      this.save.story.seen.push(ch.wave);
+      writeSave();
+      this.time.delayedCall(2300 / this.speed, () => this.ui.chapter(ch));
+    }
     this.snd(this.spec.boss ? 'boss' : 'wave');
   }
 
@@ -386,10 +438,12 @@ export class GameScene extends Phaser.Scene {
     this.phase = 'over';
     const cleared = Math.max(0, this.wave - 1);
     const best = this.save.best;
-    const newBest = cleared > (best.wave || 0);
-    best.wave = Math.max(best.wave || 0, cleared);
-    best.kills = Math.max(best.kills || 0, this.kills);
-    writeSave();
+    const newBest = !this.trial && cleared > (best.wave || 0);
+    if (!this.trial) {
+      best.wave = Math.max(best.wave || 0, cleared);
+      best.kills = Math.max(best.kills || 0, this.kills);
+      writeSave();
+    }
     this.snd('lose');
     this.ui.showResult({ wave: this.wave, cleared, kills: this.kills, newBest });
   }
@@ -441,7 +495,8 @@ export class GameScene extends Phaser.Scene {
   // ── 매 프레임 ──
   update(_time, deltaMs) {
     // 배속이 높거나 프레임이 느려도 총알이 좀비를 건너뛰지 않게 잘게 나눠 돌린다
-    let left = (Math.min(deltaMs, 50) / 1000) * this.speed;
+    // timeWarp: 영웅 등장·각성 장면에서 잠깐 느려지는 시간
+    let left = (Math.min(deltaMs, 50) / 1000) * this.speed * (this.timeWarp ?? 1);
     while (left > 0 && this.phase !== 'over') {
       const dt = Math.min(left, 0.02);
       left -= dt;
@@ -465,6 +520,7 @@ export class GameScene extends Phaser.Scene {
 
     this.updateZombies(dt);
     this.updateAllies(dt);
+    this.updateAwaken(dt);
     this.heroes.update(dt);
     this.updateShots(dt);
     this.updateLobs(dt);

@@ -5,6 +5,8 @@ const DEFAULTS = () => ({
   coins: 0,
   meta: {},
   best: { wave: 0, kills: 0 },
+  // 이야기: 프롤로그를 봤는지, 본 장(웨이브 번호)
+  story: { prologue: false, seen: [] },
   // flash: 번쩍임 효과. 기본은 꺼짐(번쩍임 없음).
   settings: { flash: false, sound: true, numbers: true },
 });
@@ -23,6 +25,7 @@ export function loadSave() {
         ...parsed,
         best: { ...data.best, ...parsed.best },
         settings: { ...data.settings, ...parsed.settings },
+        story: { ...data.story, ...parsed.story },
         meta: { ...parsed.meta },
       };
     }

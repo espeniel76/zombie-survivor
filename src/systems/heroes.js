@@ -9,6 +9,7 @@
 // 번쩍이는 효과는 쓰지 않는다. 모든 표시는 천천히 커지거나 옅어진다.
 import { ALLY } from '../data/allies.js';
 import * as R from '../core/rules.js';
+import { FONT } from '../core/ui.js';
 
 // 메아리술사가 따라 할 수 있는 공격
 const ECHO_KINDS = new Set(['bullet', 'splash', 'strike', 'flame', 'beam', 'chain', 'wisps', 'bounce', 'pact', 'plague', 'dice', 'tornado']);
@@ -25,6 +26,7 @@ export class HeroSystem {
     this.pools = [];
     this.tornados = [];
     this.dragons = new Map(); // 아군 → 용 그림
+    this.readyTexts = new Map(); // 영웅 → '각성!' 글자
     this.globalSlow = 0;
     this.g = scene.add.graphics().setDepth(8.5); // 실, 시계, 영혼, 시선 표시
     this.ground = scene.add.graphics().setDepth(2.8); // 땅 위를 도는 그림자 칼날
@@ -96,6 +98,7 @@ export class HeroSystem {
   // ── 영웅 공격 ──
   fire(u, a, st, p, target, ang, i) {
     const s = this.s;
+    target = target || { x: p.x + Math.cos(ang) * 120, y: p.y + Math.sin(ang) * 120, incoming: 0, r: 0 };
     const mx = p.x + Math.cos(ang) * 30;
     const my = p.y + Math.sin(ang) * 30;
     switch (a.kind) {
@@ -231,7 +234,8 @@ export class HeroSystem {
         break;
       }
       case 'dice': { // 운명의 도박사: 1 헛방, 2~5 배율, 6 대박(화면의 모든 좀비에 번개)
-        const roll = 1 + Math.floor(Math.random() * 6);
+        const roll = u.forceSix ? 6 : 1 + Math.floor(Math.random() * 6);
+        u.forceSix = false;
         s.floatText(p.x, p.y - 46, `주사위 ${roll}`, roll === 6 ? '#ffd84a' : '#ffffff', roll === 6 ? 28 : 20, true);
         if (roll === 1) {
           s.puff(mx, my, 0.6, 0xb8bfc4);
@@ -308,6 +312,130 @@ export class HeroSystem {
       }
       default:
         break;
+    }
+  }
+
+  // ── 영웅 합류: 빛기둥이 내려오고 주변 좀비를 밀어낸다 ──
+  arrival(i) {
+    const s = this.s;
+    const a = ALLY[s.cells[i].id];
+    const p = this.L.cellPos(i);
+    const pillar = s.add.image(p.x, p.y - 330, 'smoke').setDepth(8.3).setTint(a.look.glow).setScale(1.3, 17).setAlpha(0);
+    s.tweens.add({ targets: pillar, alpha: 0.75, duration: 280, ease: 'Quad.Out', yoyo: true, hold: 250, onComplete: () => pillar.destroy() });
+    this.ripple(p.x, p.y, a.look.glow, 240, 800);
+    this.ripple(p.x, p.y, 0xffffff, 170, 600);
+    for (const z of s.zombies) {
+      if (z.dead || z.puppet) continue;
+      const d = Math.hypot(z.x - p.x, z.y - p.y);
+      if (d > 260) continue;
+      const dx = z.x - this.L.CX;
+      const dy = z.y - this.L.CY;
+      const dl = Math.hypot(dx, dy) || 1;
+      if (!z.def.boss) {
+        z.knockT = 0.3;
+        z.kvx = (dx / dl) * 500;
+        z.kvy = (dy / dl) * 500;
+      }
+      s.hurt(z, 60 * (a.tier - 3));
+    }
+    s.snd('bigboom', p.x);
+  }
+
+  // ── 각성 순간의 한 방: 영웅마다 자기 능력을 크게 터뜨린다 ──
+  awakenBurst(u, i) {
+    const s = this.s;
+    const a = ALLY[u.id];
+    const st = u.st; // 이미 각성 수치
+    const p = this.L.cellPos(i);
+    const live = () => s.zombies.filter(z => !z.dead && !z.puppet && !z.petrified);
+    this.ripple(p.x, p.y, a.look.glow, 260, 800);
+    switch (a.kind) {
+      case 'timestop': // 전장 전체의 시간이 멈춘다
+        for (const z of live()) {
+          z.frozenUntil = s.t + 3;
+          z.vuln = st.vuln;
+          z.setTint(0x9fc4d4);
+          z.tinted = true;
+        }
+        this.ripple(this.L.CX, this.L.CY, 0x5fe0ff, 700, 1200);
+        break;
+      case 'execute': // 전장 어디든 약해진 좀비를 한꺼번에 처형
+        for (const z of live()) {
+          if (z.def.boss || z.hp / z.maxHp > st.threshold) continue;
+          this.slash(z.x, z.y, z.r);
+          s.hurt(z, z.hp + 1, { quiet: true });
+        }
+        break;
+      case 'phoenix': { // 기지를 15% 고치고 기지 둘레를 불태운다
+        const heal = Math.round(s.baseMax * 0.15);
+        s.baseHp = Math.min(s.baseMax, s.baseHp + heal);
+        s.explode(this.L.CX, this.L.CY, this.L.HALF + st.radius, st.burst, 0xffa040, 'bigboom');
+        s.floatText(this.L.CX, this.L.CY - this.L.HALF - 20, `기지 +${heal}`, '#ffd84a', 30, true);
+        break;
+      }
+      case 'mirror': {
+        const heal = Math.round(s.baseMax * 0.1);
+        s.baseHp = Math.min(s.baseMax, s.baseHp + heal);
+        s.floatText(this.L.CX, this.L.CY - this.L.HALF - 20, `기지 +${heal}`, '#bfe9ff', 30, true);
+        break;
+      }
+      case 'souls':
+        this.releaseSouls(u, i);
+        break;
+      case 'dice':
+        u.forceSix = true;
+        u.cd = 0;
+        break;
+      case 'gravity': { // 전장에서 가장 빽빽한 곳에 거대한 중력장
+        const cand = live();
+        let best = null;
+        let bestN = -1;
+        for (const z of cand) {
+          let n = 0;
+          for (const o of cand) if (Math.hypot(o.x - z.x, o.y - z.y) <= st.radius * 1.4) n++;
+          if (n > bestN) {
+            bestN = n;
+            best = z;
+          }
+        }
+        if (best) {
+          const r = st.radius * 1.4;
+          const img = s.add.image(best.x, best.y, 'well').setDepth(2.7).setScale(0.1).setAlpha(0);
+          s.tweens.add({ targets: img, scale: (r * 2) / 128, alpha: 0.95, duration: 400 });
+          this.wells.push({ img, x: best.x, y: best.y, r, life: st.time, tick: 0, st });
+        }
+        break;
+      }
+      case 'puppet': // 한꺼번에 세 마리를 조종
+        for (let k = 0; k < 3; k++) this.fire(u, a, st, p, null, 0, i);
+        break;
+      case 'sleep':
+        this.fire(u, a, { ...st, radius: 420 }, p, { x: this.L.CX, y: this.L.CY }, 0, i);
+        break;
+      case 'plague':
+        for (const z of live()) {
+          if (Math.hypot(z.x - p.x, z.y - p.y) > st.range) continue;
+          s.hurt(z, 0, { poison: st.dmg, poisonTime: st.time, plague: { dps: st.dmg, time: st.time, spread: st.spread }, quiet: true });
+        }
+        break;
+      case 'tornado': // 네 방향으로 회오리
+        for (let k = 0; k < 4; k++) {
+          const ang = (k * Math.PI) / 2 + Math.PI / 4;
+          this.fire(u, a, st, p, null, ang, i);
+        }
+        break;
+      case 'push':
+        this.fire(u, a, { ...st, range: st.range * 1.6 }, p, null, 0, i);
+        break;
+      default: { // 그 밖의 영웅: 사거리 안 좀비들에게 세 번 연달아
+        if (PASSIVE_HEROES.has(a.kind)) break;
+        const pool = live().filter(z => Math.hypot(z.x - p.x, z.y - p.y) <= Math.max(st.range || 400, 400));
+        for (let k = 0; k < 3 && pool.length; k++) {
+          const z = pool[Math.floor(Math.random() * pool.length)];
+          const ang = Math.atan2(z.y - p.y, z.x - p.x);
+          s.fire(u, a, st, p, z, ang, i, true);
+        }
+      }
     }
   }
 
@@ -779,6 +907,51 @@ export class HeroSystem {
         g.beginPath(); g.arc(z.x, z.y, z.r + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, z.stone), false); g.strokePath();
       }
     }
+    // 각성 게이지(칸 아래쪽 막대)와 각성 중 오라
+    const alive = new Set();
+    s.cells.forEach((u, i) => {
+      if (!u || !ALLY[u.id].hero) return;
+      alive.add(u);
+      const p = this.L.cellPos(i);
+      const a = ALLY[u.id];
+      if (u.awakeUntil > s.t) {
+        const left = (u.awakeUntil - s.t) / R.AWAKEN_TIME;
+        g.lineStyle(3, a.look.glow, 0.85);
+        for (let k = 0; k < 8; k++) {
+          const a0 = s.t * 1.6 + (k / 8) * Math.PI * 2;
+          g.beginPath(); g.arc(p.x, p.y + 4, 44, a0, a0 + 0.42, false); g.strokePath();
+        }
+        for (let k = 0; k < 6; k++) {
+          const h = (s.t * 45 + k * 19) % 60;
+          g.fillStyle(a.look.glow, 0.9 * (1 - h / 60));
+          g.fillCircle(p.x - 30 + k * 12, p.y + 30 - h, 2.2);
+        }
+        g.fillStyle(0x000000, 0.55); g.fillRect(p.x - 36, p.y + 38, 72, 5);
+        g.fillStyle(a.look.glow, 1); g.fillRect(p.x - 36, p.y + 38, 72 * left, 5);
+      } else {
+        const k = (u.gauge || 0) / 100;
+        g.fillStyle(0x000000, 0.55); g.fillRect(p.x - 36, p.y + 38, 72, 5);
+        g.fillStyle(k >= 1 ? 0xffd84a : 0xc9a24a, 1); g.fillRect(p.x - 36, p.y + 38, 72 * k, 5);
+        if (k >= 1) {
+          g.lineStyle(3, 0xffd84a, 0.9);
+          g.strokeRoundedRect(p.x - 44, p.y - 44, 88, 88, 12);
+        }
+      }
+      // '각성!' 글자(게이지가 가득 찼을 때만, 천천히 위아래로 떠 있다)
+      let tx = this.readyTexts.get(u);
+      if (!tx) {
+        tx = s.add.text(0, 0, '각성!', { fontFamily: FONT, fontSize: '22px', fontStyle: 'bold', color: '#ffd84a', stroke: '#0b0e12', strokeThickness: 5 }).setOrigin(0.5).setDepth(9.5);
+        this.readyTexts.set(u, tx);
+      }
+      const ready = (u.gauge || 0) >= 100 && !u.awakeUntil && s.phase === 'wave';
+      tx.setVisible(ready).setPosition(p.x, p.y - 58 + Math.sin(s.t * 2.5) * 3);
+    });
+    for (const [u, tx] of this.readyTexts) {
+      if (alive.has(u)) continue;
+      tx.destroy();
+      this.readyTexts.delete(u);
+    }
+
     // 영혼 구슬(모은 만큼 영혼 수집가 주위를 돈다)
     for (const { u, i } of this.alliesOf('souls')) {
       const p = this.L.cellPos(i);

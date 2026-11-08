@@ -132,3 +132,25 @@ export const WAVE_REPAIR = 0.15;
 export function formatNum(n) {
   return Math.round(n).toLocaleString('ko-KR');
 }
+
+// ── 각성 ──
+export const AWAKEN_TIME = 8; // 각성이 이어지는 시간(초)
+export const AWAKEN_CHARGE = 26; // 웨이브 중 게이지가 가득 차는 데 걸리는 시간(초)
+
+// 각성한 영웅의 수치: 더 세고, 더 빠르고, 더 넓게
+export function awakenStats(st) {
+  const s = { ...st };
+  for (const k of ['dmg', 'poison', 'burst', 'hps']) if (s[k]) s[k] = Math.round(s[k] * 2);
+  if (s.rate) s.rate *= 2;
+  if (s.range && s.range < 1500) s.range = Math.round(s.range * 1.25);
+  if (s.radius) s.radius = Math.round(s.radius * 1.3);
+  if (s.spin) s.spin *= 2;
+  if (s.width) s.width *= 1.5;
+  if (s.count) s.count += 1;
+  if (s.max) s.max += 2;
+  if (s.power) s.power = 1;
+  if (s.threshold) s.threshold = Math.min(0.6, s.threshold + 0.15);
+  if (s.guard) s.guard = Math.min(0.6, s.guard + 0.2);
+  if (s.time) s.time = Math.round(s.time * 1.3 * 10) / 10;
+  return s;
+}

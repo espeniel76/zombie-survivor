@@ -7,6 +7,8 @@ import { unlockAudio } from '../core/sfx.js';
 import { W, H, COLOR, text, panel, button, settingsRows } from '../core/ui.js';
 import { statsLine } from './UIScene.js';
 import { allyView, BODY_OY } from '../render/sprites.js';
+import { storyPages } from '../core/story-ui.js';
+import { PROLOGUE, CHAPTERS } from '../data/story.js';
 
 const KIND_LABEL = {
   bullet: '사격', splash: '폭발', strike: '폭격', flame: '화염', beam: '광선',
@@ -65,10 +67,35 @@ export class TitleScene extends Phaser.Scene {
     c.add(text(this, W / 2, 400, '가운데 9칸을 지켜라', 34, COLOR.greenText));
     const best = this.save.best;
     c.add(text(this, W / 2, 470, best.wave ? `최고 기록  웨이브 ${best.wave} · 처치 ${R.formatNum(best.kills)}` : '아군을 세워 사방에서 오는 좀비를 막으세요', 24, COLOR.dim));
-    c.add(button(this, W / 2, 700, 440, 110, '게임 시작', () => this.scene.start('Game'), { size: 44 }));
-    c.add(button(this, W / 2, 840, 440, 92, '아군 도감', () => this.showBook(), { fill: COLOR.orange, textColor: '#2a1600', size: 34 }));
-    c.add(button(this, W / 2, 960, 440, 92, '설정', () => this.showSettings(), { fill: 0x3a4652, textColor: '#eef3ea', size: 34 }));
+    c.add(button(this, W / 2, 660, 440, 104, '게임 시작', () => this.scene.start('Game', { trial: false }), { size: 44 }));
+    c.add(button(this, W / 2, 776, 440, 76, '영웅 체험 모드', () => this.scene.start('Game', { trial: true }), { fill: 0x8a5cff, textColor: '#ffffff', size: 28 }));
+    c.add(button(this, W / 2, 878, 440, 84, '아군 도감', () => this.showBook(), { fill: COLOR.orange, textColor: '#2a1600', size: 32 }));
+    c.add(button(this, W / 2, 978, 440, 84, '이야기', () => this.showStory(), { fill: 0x5a4a7a, textColor: '#f4eeff', size: 32 }));
+    c.add(button(this, W / 2, 1076, 440, 76, '설정', () => this.showSettings(), { fill: 0x3a4652, textColor: '#eef3ea', size: 28 }));
     c.add(text(this, W / 2, 1180, '빈 칸을 누르면 상점 · 아군을 누르면 강화/옮기기/판매', 21, COLOR.dim, { strokeThickness: 0 }));
+  }
+
+  // 이야기: 프롤로그 다시 보기 + 지금까지 연 장
+  showStory() {
+    this.clear();
+    const c = this.main;
+    c.add(panel(this, W / 2, H / 2, 692, 1200));
+    c.add(text(this, W / 2, 110, '이야기', 40, COLOR.text));
+    c.add(text(this, W / 2, 158, '검은 비가 내린 뒤, 아홉 칸의 기록', 22, COLOR.dim, { strokeThickness: 0 }));
+    const seen = this.save.story.seen;
+    CHAPTERS.forEach((ch, k) => {
+      const y = 250 + k * 116;
+      const open = seen.includes(ch.wave) || (this.save.best.wave || 0) >= ch.wave;
+      const g = this.add.graphics();
+      g.fillStyle(open ? 0x232b33 : 0x161b20, 1);
+      g.fillRoundedRect(40, y - 50, W - 80, 104, 12);
+      c.add(g);
+      c.add(text(this, 64, y - 26, ch.title, 24, open ? COLOR.orangeText : '#5a6470', { ox: 0, strokeThickness: 0 }));
+      c.add(text(this, 64, y + 4, open ? ch.text : `웨이브 ${ch.wave}에 도달하면 열려요`, 18, open ? COLOR.text : '#5a6470',
+        { ox: 0, oy: 0, strokeThickness: 0, bold: false, wrap: W - 130, align: 'left', lineSpacing: 2 }));
+    });
+    c.add(button(this, W / 2 - 150, 1170, 260, 80, '처음부터 보기', () => storyPages(this, PROLOGUE, null), { fill: 0x5a4a7a, textColor: '#f4eeff', size: 26 }));
+    c.add(button(this, W / 2 + 150, 1170, 260, 80, '뒤로', () => this.showMain(), { fill: 0x3a4652, textColor: '#eef3ea' }));
   }
 
   showSettings() {

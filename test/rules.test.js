@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  awakenStats,
   neighbors, upgradeCost, sellPrice, rateBuffAt, allyStats, hpMul, waveSpec, pickZombie,
   zombieHp, isBossWave,
 } from '../src/core/rules.js';
@@ -77,6 +78,18 @@ describe('전설·신화 영웅', () => {
   it('메아리 위력은 레벨마다 오르고 100%를 넘지 않는다', () => {
     expect(allyStats('echo', 1).power).toBe(0.6);
     expect(allyStats('echo', 5).power).toBe(1);
+  });
+});
+
+describe('각성', () => {
+  it('각성하면 피해와 속도가 두 배, 범위가 넓어진다', () => {
+    const base = allyStats('gravity', 1);
+    const up = awakenStats(base);
+    expect(up.dmg).toBe(base.dmg * 2);
+    expect(up.rate).toBeCloseTo(base.rate * 2);
+    expect(up.radius).toBeGreaterThan(base.radius);
+    expect(awakenStats(allyStats('echo', 1)).power).toBe(1);
+    expect(awakenStats(allyStats('executioner', 5)).threshold).toBeLessThanOrEqual(0.6);
   });
 });
 

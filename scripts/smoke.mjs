@@ -27,7 +27,7 @@ await page.goto(URL);
 await wait(1200);
 await shot('1-title');
 
-await tapGame(360, 840); // 아군 도감
+await tapGame(360, 878); // 아군 도감
 await wait(400);
 await tapGame(110, 216);
 await wait(300);
@@ -35,8 +35,10 @@ await shot('2-book');
 await tapGame(360, 1170); // 뒤로
 await wait(300);
 
-await tapGame(360, 700); // 게임 시작
-await wait(800);
+await tapGame(360, 660); // 게임 시작
+await wait(1000);
+await tapGame(360, 1160); // 처음 이야기(프롤로그) 건너뛰기
+await wait(600);
 await tapGame(360, 650); // 가운데 빈 칸 → 상점
 await wait(400);
 await shot('3-shop');
