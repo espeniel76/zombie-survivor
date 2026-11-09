@@ -5,7 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>좀비 생존자</title>
   <meta name="theme-color" content="#11151a" />
-  <link rel="icon" href="data:," />
+  <link rel="icon" type="image/png" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./icon-180.png" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="좀비 생존자" />
   <style>
     html, body {
       margin: 0;
@@ -28,10 +33,71 @@
       box-sizing: border-box;
     }
     canvas { display: block; touch-action: none; }
+
+    /* 불러오기 화면: 게임 파일이 오기 전에 바로 보인다. 깜빡임 없이 막대만 천천히 찬다. */
+    #loader {
+      position: fixed; inset: 0; z-index: 10;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+      background: #11151a; color: #eef3ea;
+      font-family: 'Pretendard', 'Noto Sans KR', 'Malgun Gothic', 'Apple SD Gothic Neo', system-ui, sans-serif;
+      transition: opacity 0.35s ease;
+    }
+    #loader.gone { opacity: 0; pointer-events: none; }
+    #loader .blob {
+      position: relative; width: 96px; height: 96px; border-radius: 50%;
+      background: #d1202e; border: 5px solid #161b20; box-sizing: border-box;
+    }
+    #loader .blob i {
+      position: absolute; top: 30px; width: 20px; height: 20px; border-radius: 50%;
+      background: #fff; border: 3px solid #161b20; box-sizing: border-box;
+    }
+    #loader .blob i:first-child { left: 22px; }
+    #loader .blob i:last-child { left: 48px; }
+    #loader h1 { margin: 0; font-size: 34px; font-weight: 800; letter-spacing: 2px; }
+    #loader .bar {
+      width: min(320px, 70vw); height: 14px; border-radius: 7px;
+      background: #1b222b; border: 2px solid #2e3a47; overflow: hidden;
+    }
+    #loader .fill { width: 4%; height: 100%; background: #9be15d; border-radius: 5px; transition: width 0.25s linear; }
+    #loader .msg { font-size: 16px; color: #93a39a; min-height: 20px; }
   </style>
 </head>
 <body>
   <div id="game"></div>
+  <div id="loader">
+    <div class="blob"><i></i><i></i></div>
+    <h1>좀비 생존자</h1>
+    <div class="bar"><div class="fill"></div></div>
+    <div class="msg">게임 파일 받는 중…</div>
+  </div>
+  <script>
+    // 게임 코드가 내려오는 동안 막대를 60%까지 천천히 채우고, 그다음은 게임이 window.__load로 알려 준다
+    (function () {
+      var el = document.getElementById('loader');
+      var fill = el.querySelector('.fill');
+      var msg = el.querySelector('.msg');
+      var shown = 0.04, target = 0.6, done = false;
+      var tick = setInterval(function () {
+        shown += (target - shown) * 0.06;
+        fill.style.width = (shown * 100).toFixed(1) + '%';
+      }, 100);
+      window.__load = {
+        set: function (p, text) {
+          target = Math.max(target, p);
+          shown = Math.max(shown, Math.min(p, shown + 0.2));
+          if (text) msg.textContent = text;
+        },
+        done: function () {
+          if (done) return;
+          done = true;
+          clearInterval(tick);
+          fill.style.width = '100%';
+          el.classList.add('gone');
+          setTimeout(function () { el.remove(); }, 400);
+        },
+      };
+    })();
+  </script>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>

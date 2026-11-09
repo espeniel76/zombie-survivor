@@ -674,6 +674,7 @@ export function bakeSounds() {
       }
       baked[name] = list;
     }
+    performance.mark('baked');
   })();
   return baking;
 }

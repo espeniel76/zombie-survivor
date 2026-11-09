@@ -1,3 +1,4 @@
+window.__load?.set(0.7, '그림 그리는 중…');
 import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene.js';
 import { TitleScene } from './scenes/TitleScene.js';
@@ -22,6 +23,11 @@ const game = new Phaser.Game({
 bakeSounds();
 window.addEventListener('pointerdown', unlockAudio, { passive: true });
 window.addEventListener('keydown', unlockAudio);
+
+// 한 번 받은 게임 파일은 휴대폰에 저장해 두고 다음부터 바로 켠다(서비스 워커).
+if (import.meta.env.PROD && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
 
 // 개발용: 콘솔/자동 점검에서 상태 확인
 if (import.meta.env.DEV) {

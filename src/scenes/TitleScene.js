@@ -21,6 +21,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create() {
+    performance.mark('title');
     this.save = loadSave();
     this.input.once('pointerdown', unlockAudio);
     this.input.keyboard.once('keydown', unlockAudio);
@@ -32,6 +33,7 @@ export class TitleScene extends Phaser.Scene {
 
     this.main = this.add.container(0, 0);
     this.showMain();
+    window.__load?.done();
   }
 
   addWalker(anywhere) {

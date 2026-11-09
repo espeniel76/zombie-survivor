@@ -13,7 +13,7 @@ const r = await esbuild.build({
   write: false,
   target: 'es2020',
   alias: { phaser: './scripts/phaser-global.js' },
-  define: { 'import.meta.env.DEV': 'false' },
+  define: { 'import.meta.env.DEV': 'false', 'import.meta.env.PROD': 'false' },
 });
 const js = r.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
 const html = `<title>좀비 생존자</title>

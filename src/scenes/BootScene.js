@@ -25,11 +25,14 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
+    performance.mark('boot');
     buildCharacterTextures(this);
     this.drawItems();
     this.drawEffects();
     this.drawShots();
     this.drawGround();
+    performance.mark('drawn');
+    window.__load?.set(0.95, '거의 다 됐어요');
     this.scene.start('Title');
   }
 
