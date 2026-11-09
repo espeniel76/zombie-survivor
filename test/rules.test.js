@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   awakenStats,
   neighbors, upgradeCost, sellPrice, rateBuffAt, allyStats, hpMul, waveSpec, pickZombie,
-  zombieHp, isBossWave,
+  zombieHp, isBossWave, dropCoins, isUnlocked, unlockMythic, MYTHIC_UNLOCK,
 } from '../src/core/rules.js';
 import { ALLIES, ALLY, TIERS } from '../src/data/allies.js';
 
@@ -126,4 +126,30 @@ describe('웨이브', () => {
 
 it('모든 아군 id로 찾을 수 있다', () => {
   for (const a of ALLIES) expect(ALLY[a.id]).toBe(a);
+});
+
+describe('메인 상점', () => {
+  const fresh = coins => ({ coins, meta: {} });
+  it('신화만 해금이 필요하다', () => {
+    expect(isUnlocked(fresh(0), 'echo')).toBe(true);
+    expect(isUnlocked(fresh(0), 'gravity')).toBe(false);
+  });
+  it('보유 코인이 모자라면 해금되지 않는다', () => {
+    const s = fresh(MYTHIC_UNLOCK - 1);
+    expect(unlockMythic(s, 'gravity')).toBe(false);
+    expect(s.coins).toBe(MYTHIC_UNLOCK - 1);
+  });
+  it('해금하면 2000코인이 빠지고, 두 번 사지 않는다', () => {
+    const s = fresh(5000);
+    expect(unlockMythic(s, 'gravity')).toBe(true);
+    expect(s.coins).toBe(3000);
+    expect(isUnlocked(s, 'gravity')).toBe(true);
+    expect(unlockMythic(s, 'gravity')).toBe(false);
+    expect(s.coins).toBe(3000);
+  });
+  it('센 좀비일수록 코인을 많이 떨어뜨린다', () => {
+    expect(dropCoins('walker')).toBe(1);
+    expect(dropCoins('brute')).toBeGreaterThan(dropCoins('runner'));
+    expect(dropCoins('boss')).toBeGreaterThan(dropCoins('brute'));
+  });
 });

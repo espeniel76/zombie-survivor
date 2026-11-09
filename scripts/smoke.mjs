@@ -27,7 +27,12 @@ await page.goto(URL);
 await wait(1200);
 await shot('1-title');
 
-await tapGame(152, 1150); // 아군 도감
+await tapGame(114, 1150); // 상점
+await wait(400);
+await shot('1b-mainshop');
+await tapGame(360, 1196); // 뒤로
+await wait(300);
+await tapGame(278, 1150); // 아군 도감
 await wait(400);
 await shot('2-book');
 await tapGame(160, 200); // 첫 아군(신입 경비) → 미리보기
@@ -68,6 +73,7 @@ await wait(300);
 await page.evaluate(() => {
   const g = window.__game.scene.getScene('Game');
   g.coins = 99999;
+  g.save.meta.unlocked = ['gravity', 'puppeteer', 'plague'];
   ['sniper', 'firefighter', 'electrician', 'commander', 'echo', 'gravity', 'puppeteer', 'plague'].forEach(id => g.buy(id));
   g.setSpeed(3);
   g.skipBreak();

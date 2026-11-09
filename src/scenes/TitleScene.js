@@ -4,7 +4,7 @@ import { ALLIES, TIERS } from '../data/allies.js';
 import * as R from '../core/rules.js';
 import { loadSave, writeSave } from '../core/save.js';
 import { unlockAudio } from '../core/sfx.js';
-import { W, H, COLOR, text, panel, button, settingsRows } from '../core/ui.js';
+import { W, H, COLOR, text, panel, button, settingsRows, appear, vanish, curtainIn, curtainOut } from '../core/ui.js';
 import { statsLine } from './UIScene.js';
 import { allyView, BODY_OY } from '../render/sprites.js';
 import { storyPages } from '../core/story-ui.js';
@@ -20,7 +20,7 @@ export class TitleScene extends Phaser.Scene {
     super('Title');
   }
 
-  // data.book = 미리보기에서 돌아올 때 도감을 바로 연다
+  // data.open = 'book' | 'shop' → 미리보기에서 돌아올 때 그 화면을 바로 연다
   create(data) {
     performance.mark('title');
     this.save = loadSave();
@@ -33,7 +33,9 @@ export class TitleScene extends Phaser.Scene {
     this.add.rectangle(W / 2, H / 2, W, H, 0x0b0e12, 0.45);
 
     this.main = this.add.container(0, 0);
-    if (data?.book) this.showBook();
+    curtainIn(this);
+    if (data?.open === 'book') this.showBook();
+    else if (data?.open === 'shop') this.showShop();
     else this.showMain();
     window.__load?.done();
   }
@@ -60,8 +62,17 @@ export class TitleScene extends Phaser.Scene {
     }
   }
 
+  // 화면 바꾸기: 지금 화면은 천천히 사라지고, 새 화면은 살짝 아래에서 떠오르며 나타난다
   clear() {
-    this.main.removeAll(true);
+    if (this.main.list.length) vanish(this, this.main, { duration: 140 });
+    else this.main.destroy();
+    this.main = this.add.container(0, 0);
+    appear(this, this.main, { duration: 260, delay: 90 });
+  }
+
+  // 장면 넘어가기(화면이 어두워진 뒤)
+  go(key, data) {
+    curtainOut(this, () => this.scene.start(key, data));
   }
 
   showMain() {
@@ -72,17 +83,94 @@ export class TitleScene extends Phaser.Scene {
     const best = this.save.best;
     if (best.wave) c.add(text(this, W / 2, 470, `최고 기록  웨이브 ${best.wave} · 처치 ${R.formatNum(best.kills)}`, 24, COLOR.dim));
     // 큰 버튼은 '게임 시작' 하나만. 나머지는 아래 작은 버튼 한 줄
-    c.add(button(this, W / 2, 720, 460, 116, '게임 시작', () => this.scene.start('Game', { preview: null }), { size: 46 }));
+    c.add(button(this, W / 2, 720, 460, 116, '게임 시작', () => this.go('Game', { preview: null }), { size: 46 }));
+    // 보유 코인(오른쪽 위)
+    const wallet = text(this, 696, 54, R.formatNum(this.save.coins || 0), 32, '#ffe08a', { ox: 1 });
+    c.add([wallet, this.add.image(696 - wallet.width - 24, 54, 'item_coin').setScale(1.4)]);
     const small = [
+      ['상점', () => this.showShop(), '#ffe08a'],
       ['아군 도감', () => this.showBook(), COLOR.orangeText],
       ['이야기', () => this.showStory(), '#f4eeff'],
       ['설정', () => this.showSettings(), COLOR.text],
     ];
-    const bw = 196;
+    const bw = 152;
     const gap = 12;
     const x0 = W / 2 - ((bw + gap) * (small.length - 1)) / 2;
     small.forEach(([label, fn, color], k) =>
       c.add(button(this, x0 + k * (bw + gap), 1150, bw, 72, label, fn, { fill: 0x26303a, textColor: color, size: 24 })));
+  }
+
+  // 메인 상점: 보유 코인으로 신화를 해금한다(한 번 사면 계속 전장 상점에 나온다)
+  showShop() {
+    this.clear();
+    const c = this.main;
+    c.add(panel(this, W / 2, H / 2, 692, 1200));
+    c.add(text(this, W / 2, 104, '상점', 44, COLOR.text));
+    c.add(text(this, W / 2, 150, '신화를 해금하면 전장 상점에 나와요 · 그림을 누르면 미리보기', 20, COLOR.dim, { strokeThickness: 0, bold: false }));
+    const wallet = text(this, W / 2 + 14, 192, `보유 코인 ${R.formatNum(this.save.coins || 0)}`, 28, '#ffe08a');
+    c.add([wallet, this.add.image(W / 2 - wallet.width / 2 - 12, 192, 'item_coin').setScale(1.2)]);
+    const mythics = ALLIES.filter(a => R.needsUnlock(a.id));
+    const red = TIERS[5];
+    mythics.forEach((a, k) => {
+      const x = W / 2 + ((k % 3) - 1) * 216;
+      const y = 316 + Math.floor(k / 3) * 178;
+      const owned = R.isUnlocked(this.save, a.id);
+      const g = this.add.graphics();
+      g.fillStyle(owned ? 0x1f262e : 0x161b20, 1);
+      g.fillRoundedRect(x - 102, y - 82, 204, 168, 14);
+      g.lineStyle(3, owned ? red.color : 0x3a4652, 1);
+      g.strokeRoundedRect(x - 102, y - 82, 204, 168, 14);
+      const img = allyView(this, x, y - 22, a.id, 0.82);
+      if (!owned) img.setAlpha(0.75);
+      const zone = this.add.zone(x, y - 34, 204, 96).setInteractive({ useHandCursor: true });
+      zone.on('pointerup', () => this.go('Game', { preview: a.id, from: 'shop' }));
+      const name = text(this, x, y + 22, a.name, 20, owned ? red.text : COLOR.text, { strokeThickness: 0 });
+      const enough = (this.save.coins || 0) >= R.MYTHIC_UNLOCK;
+      const b = owned
+        ? button(this, x, y + 58, 180, 44, '해금됨', () => {}, { fill: 0x2a3138, textColor: '#93a39a', size: 20 })
+        : button(this, x, y + 58, 180, 44, `${R.formatNum(R.MYTHIC_UNLOCK)}코인`, () => this.confirmUnlock(a),
+          { fill: enough ? COLOR.green : 0x4a535c, textColor: enough ? '#13200b' : '#aab3ba', size: 20 });
+      c.add([g, img, zone, name, b]);
+    });
+    c.add(button(this, W / 2, 1196, 300, 72, '뒤로', () => this.showMain(), { fill: 0x3a4652, textColor: '#eef3ea' }));
+  }
+
+  // 실수로 누르지 않게 한 번 더 묻는다
+  confirmUnlock(a) {
+    if ((this.save.coins || 0) < R.MYTHIC_UNLOCK) {
+      this.flashMsg(`코인이 부족해요 · 좀비를 잡으면 코인을 떨어뜨려요`);
+      return;
+    }
+    const box = this.add.container(0, 0).setDepth(20);
+    const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.6).setInteractive().setDepth(19);
+    dim.setAlpha(0);
+    this.tweens.add({ targets: dim, alpha: 1, duration: 180 });
+    const close = () => {
+      vanish(this, box, { duration: 140 });
+      vanish(this, dim, { duration: 160 });
+    };
+    box.add(panel(this, W / 2, H / 2, 560, 420));
+    box.add(allyView(this, W / 2, H / 2 - 100, a.id, 1.3));
+    box.add(text(this, W / 2, H / 2 + 6, `${a.name} 해금`, 34, TIERS[5].text));
+    box.add(text(this, W / 2, H / 2 + 52, `보유 코인 ${R.formatNum(this.save.coins)} → ${R.formatNum(this.save.coins - R.MYTHIC_UNLOCK)}`, 22, '#ffe08a', { strokeThickness: 0 }));
+    box.add(button(this, W / 2 - 120, H / 2 + 136, 210, 76, '해금', () => {
+      close();
+      if (R.unlockMythic(this.save, a.id)) {
+        writeSave();
+        this.showShop();
+        this.flashMsg(`${a.name} 해금! 전장 상점 신화 칸에 나와요`);
+      }
+    }, { size: 30 }));
+    box.add(button(this, W / 2 + 120, H / 2 + 136, 210, 76, '취소', () => close(), { fill: 0x3a4652, textColor: '#eef3ea', size: 30 }));
+    appear(this, box, { duration: 220, dy: 18 });
+  }
+
+  // 잠깐 떴다 사라지는 안내(밝기 변화 없이 천천히 사라짐)
+  flashMsg(str) {
+    this.msg?.destroy();
+    this.msg = text(this, W / 2, 1110, str, 24, COLOR.text, { strokeThickness: 6 }).setDepth(30);
+    appear(this, this.msg, { duration: 200, dy: 8 });
+    this.tweens.add({ targets: this.msg, alpha: 0, delay: 1800, duration: 400 });
   }
 
   // 이야기: 프롤로그 다시 보기 + 지금까지 연 장
@@ -140,7 +228,7 @@ export class TitleScene extends Phaser.Scene {
           g.strokeRoundedRect(x - 42, y - 42, 84, 84, 10);
           const img = allyView(this, x, y + 10, a.id, 0.92);
           const zone = this.add.zone(x, y, 84, 84).setInteractive({ useHandCursor: true });
-          zone.on('pointerup', () => this.scene.start('Game', { preview: a.id }));
+          zone.on('pointerup', () => this.go('Game', { preview: a.id, from: 'book' }));
           c.add([g, img, zone]);
         });
       }

@@ -4,7 +4,7 @@ import { ALLIES, ALLY, TIERS, MAX_ALLY_LEVEL } from '../data/allies.js';
 import * as R from '../core/rules.js';
 import { loadSave, writeSave } from '../core/save.js';
 import { sfx } from '../core/sfx.js';
-import { W, H, COLOR, text, panel, button, settingsRows } from '../core/ui.js';
+import { W, H, COLOR, text, panel, button, settingsRows, appear, vanish, curtainIn, curtainOut } from '../core/ui.js';
 import { allyView } from '../render/sprites.js';
 import { storyPages, chapterCard } from '../core/story-ui.js';
 import { PROLOGUE } from '../data/story.js';
@@ -69,11 +69,12 @@ export class UIScene extends Phaser.Scene {
     this.buildHud();
     if (this.preview) this.buildPreviewBottom();
     else this.buildBottom();
+    curtainIn(this, 320);
 
     this.bannerText = text(this, W / 2, 330, '', 44, COLOR.text, { strokeThickness: 8 }).setDepth(50).setAlpha(0);
     // 다음 웨이브 직전 3초 카운트(숫자만 바뀌고 밝기는 그대로)
     this.countText = text(this, W / 2, 560, '', 96, '#ffd84a', { strokeThickness: 10 }).setDepth(45).setAlpha(0.85).setVisible(false);
-    this.toastBox = this.add.container(W / 2, 1090).setDepth(60).setAlpha(0);
+    this.toastBox = this.add.container(W / 2, 1090).setDepth(150).setAlpha(0); // 상점 같은 창(100) 위에도 보이게
     this.toastBg = this.add.graphics();
     this.toastText = text(this, 0, 0, '', 26, COLOR.text, { strokeThickness: 0 });
     this.toastBox.add([this.toastBg, this.toastText]);
@@ -124,7 +125,13 @@ export class UIScene extends Phaser.Scene {
     this.hpText = text(this, W / 2, 125, '', 20, COLOR.text);
     this.bossBar = this.add.graphics();
     this.bossText = text(this, W / 2, 182, '', 20, COLOR.text);
+    // 보유 코인(좀비가 떨어뜨린 코인이 날아와 쌓인다)
+    this.walletText = text(this, 700, 88, '', 20, '#ffe08a', { ox: 1, strokeThickness: 4 });
+    this.walletIcon = this.add.image(0, 88, 'item_coin').setScale(0.9);
+    this.coinFly = [];
     if (this.preview) {
+      this.walletText.setVisible(false);
+      this.walletIcon.setVisible(false);
       const a = this.preview;
       const t = TIERS[a.tier];
       this.waveText.setText(a.name).setColor(t.text);
@@ -147,6 +154,24 @@ export class UIScene extends Phaser.Scene {
     button(this, 650, y, 90, 92, 'II', () => this.openPause(), { fill: 0x3a4652, textColor: '#eef3ea', size: 30 });
   }
 
+  // 좀비가 떨어뜨린 코인: 살짝 튀어 올랐다가 위쪽 '보유' 숫자로 날아간다(깜빡임 없음)
+  dropCoin(x, y, n) {
+    const flying = this.coinFly.filter(c => c.active).length;
+    if (flying > 24) return; // 한꺼번에 너무 많으면 그림만 생략(코인은 이미 더해짐)
+    const img = this.coinFly.find(c => !c.active) || this.add.image(0, 0, 'item_coin').setDepth(30);
+    if (!this.coinFly.includes(img)) this.coinFly.push(img);
+    img.setActive(true).setVisible(true).setPosition(x, y).setScale(n >= 4 ? 1.3 : 0.95).setAlpha(1);
+    const tx = this.walletIcon.x;
+    const ty = this.walletIcon.y;
+    this.tweens.add({
+      targets: img, y: y - 26, duration: 180, ease: 'Quad.Out',
+      onComplete: () => this.tweens.add({
+        targets: img, x: tx, y: ty, scale: 0.7, duration: 520, delay: 120, ease: 'Cubic.In',
+        onComplete: () => img.setActive(false).setVisible(false),
+      }),
+    });
+  }
+
   // 도감 미리보기: 아래쪽에 설명과 '도감으로' 버튼
   buildPreviewBottom() {
     const a = this.preview;
@@ -167,13 +192,15 @@ export class UIScene extends Phaser.Scene {
     text(this, W / 2, y, statsLine(a.kind, R.allyStats(a.id, 1)), 19, COLOR.dim, { strokeThickness: 0, bold: false });
     if (a.hero) text(this, W / 2, y + 32, '게이지가 차면 영웅을 눌러 각성해 보세요', 19, '#c9b8ff', { strokeThickness: 0, bold: false });
     const by = 1212;
-    button(this, 250, by, 420, 92, '도감으로 돌아가기', () => this.backToBook(), { fill: COLOR.orange, textColor: '#2a1600', size: 32 });
+    button(this, 250, by, 420, 92, '돌아가기', () => this.backToBook(), { fill: COLOR.orange, textColor: '#2a1600', size: 32 });
     this.speedBtn = button(this, 580, by, 180, 92, '1배속', () => this.cycleSpeed(), { fill: 0x3a4652, textColor: '#eef3ea', size: 26 });
   }
 
   backToBook() {
-    this.scene.stop('Game');
-    this.scene.start('Title', { book: true });
+    curtainOut(this, () => {
+      this.scene.stop('Game');
+      this.scene.start('Title', { open: this.game_.previewFrom || 'book' });
+    });
   }
 
   cycleSpeed() {
@@ -198,6 +225,8 @@ export class UIScene extends Phaser.Scene {
     else this.statusText.setText('');
     this.coinText.setText(R.formatNum(g.coins));
     this.coinIcon.x = 700 - this.coinText.width - 22;
+    this.walletText.setText(`보유 ${R.formatNum(this.save.coins || 0)}`);
+    this.walletIcon.x = 700 - this.walletText.width - 16;
     this.skipBtn.setVisible(g.phase === 'break');
     this.updateHpBar(g);
 
@@ -273,18 +302,20 @@ export class UIScene extends Phaser.Scene {
     this.toastBg.lineStyle(2, 0x2e3a47, 1);
     this.toastBg.strokeRoundedRect(-w / 2, -28, w, 56, 16);
     this.tweens.killTweensOf(this.toastBox);
-    this.toastBox.setAlpha(1);
-    this.tweens.add({ targets: this.toastBox, alpha: 0, delay: 1500, duration: 350 });
+    this.toastBox.setY(1090);
+    this.tweens.add({ targets: this.toastBox, alpha: 1, duration: 140, ease: 'Quad.Out' });
+    this.tweens.add({ targets: this.toastBox, alpha: 0, delay: 1600, duration: 350 });
   }
 
   // ── 팝업 공통 ──
+  // 창은 어두운 막이 천천히 깔리고, 내용은 살짝 아래에서 떠오르며 나타난다
   openModal(pause = true) {
     this.closeModal(false);
-    const c = this.add.container(0, 0).setDepth(100);
-    const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.55).setInteractive();
+    const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.55).setInteractive().setDepth(99);
     dim.setAlpha(0);
-    this.tweens.add({ targets: dim, alpha: 1, duration: 150 });
-    c.add(dim);
+    this.tweens.add({ targets: dim, alpha: 1, duration: 180 });
+    const c = this.add.container(0, 0).setDepth(100);
+    appear(this, c, { duration: 220, dy: 18 });
     c.dim = dim;
     this.modal = c;
     if (pause && this.game_.phase !== 'over') this.scene.pause('Game');
@@ -293,7 +324,8 @@ export class UIScene extends Phaser.Scene {
 
   closeModal(resume = true) {
     if (!this.modal) return;
-    this.modal.destroy();
+    vanish(this, this.modal, { duration: 140 });
+    vanish(this, this.modal.dim, { duration: 170 });
     this.modal = null;
     if (resume) {
       this.game_.deselect();
@@ -340,6 +372,7 @@ export class UIScene extends Phaser.Scene {
         this.shopTier = k;
         this.shopPage = 0;
         this.refreshShop();
+        appear(this, this.shopList, { duration: 200, dy: 10 });
       }, { fill: sel ? t.color : 0x232b33, textColor: sel ? '#10151a' : t.text, size: 24 });
       this.shopTabs.add(b);
     });
@@ -353,6 +386,7 @@ export class UIScene extends Phaser.Scene {
       const turn = d => {
         this.shopPage = (this.shopPage + d + pages) % pages;
         this.refreshShop();
+        appear(this, this.shopList, { duration: 200, dy: 10 });
       };
       this.shopList.add(button(this, W / 2 - 150, 1104, 96, 56, '◀', () => turn(-1), { fill: 0x3a4652, textColor: '#eef3ea', size: 26 }));
       this.shopList.add(text(this, W / 2, 1104, `${this.shopPage + 1} / ${pages}`, 26, COLOR.text));
@@ -370,9 +404,14 @@ export class UIScene extends Phaser.Scene {
       c.add(text(this, 176, y - 2, `${TIERS[a.tier].name} · ${a.role || KIND_LABEL[a.kind]}`, 20, TIERS[a.tier].text, { ox: 0, strokeThickness: 0 }));
       c.add(text(this, 176, y + 26, a.desc, 19, COLOR.text, { ox: 0, strokeThickness: 0, bold: false, align: 'left' }));
       c.add(text(this, 176, y + 52, statsLine(a.kind, R.allyStats(a.id, 1)), 16, COLOR.dim, { ox: 0, strokeThickness: 0, bold: false, align: 'left' }));
-      const can = g.coins >= a.price && empty > 0;
-      const label = empty === 0 ? '빈 칸 없음' : `${R.formatNum(a.price)}코인`;
+      const locked = !R.isUnlocked(this.save, a.id);
+      const can = !locked && g.coins >= a.price && empty > 0;
+      const label = locked ? '잠김' : empty === 0 ? '빈 칸 없음' : `${R.formatNum(a.price)}코인`;
       const b = button(this, 614, y, 132, 76, label, () => {
+        if (locked) {
+          this.toast(`메인 화면 상점에서 ${R.formatNum(R.MYTHIC_UNLOCK)}코인으로 해금해요`);
+          return;
+        }
         if (!can) {
           this.toast(empty === 0 ? '빈 칸이 없어요. 아군을 팔거나 옮겨 보세요.' : '코인이 부족해요');
           return;
@@ -460,13 +499,16 @@ export class UIScene extends Phaser.Scene {
   }
 
   toTitle() {
-    this.modal = null;
-    this.scene.stop('Game');
-    this.scene.start('Title', { book: false });
+    writeSave();
+    curtainOut(this, () => {
+      this.modal = null;
+      this.scene.stop('Game');
+      this.scene.start('Title', { open: null });
+    });
   }
 
   // ── 결과 ──
-  showResult({ wave, cleared, kills, newBest }) {
+  showResult({ wave, cleared, kills, newBest, runCoins = 0 }) {
     const c = this.openModal(false);
     c.add(panel(this, W / 2, H / 2, 620, 700));
     c.add(text(this, W / 2, H / 2 - 270, '기지가 무너졌어요', 44, '#ff8a80'));
@@ -474,10 +516,11 @@ export class UIScene extends Phaser.Scene {
     c.add(text(this, W / 2, H / 2 - 110, `막아낸 웨이브  ${cleared}`, 30, COLOR.greenText));
     c.add(text(this, W / 2, H / 2 - 60, `처치한 좀비  ${R.formatNum(kills)}`, 30, COLOR.text));
     c.add(text(this, W / 2, H / 2 + 0, newBest ? '최고 기록!' : `최고 기록  웨이브 ${this.save.best.wave}`, 30, newBest ? COLOR.orangeText : COLOR.dim));
-    c.add(button(this, W / 2, H / 2 + 140, 400, 88, '다시 하기', () => {
+    c.add(text(this, W / 2, H / 2 + 56, `주운 코인 +${R.formatNum(runCoins)}  ·  보유 ${R.formatNum(this.save.coins || 0)}`, 26, '#ffe08a'));
+    c.add(button(this, W / 2, H / 2 + 140, 400, 88, '다시 하기', () => curtainOut(this, () => {
       this.modal = null;
       this.game_.scene.restart();
-    }, { size: 32 }));
+    }), { size: 32 }));
     c.add(button(this, W / 2, H / 2 + 250, 400, 88, '처음 화면으로', () => this.toTitle(), { fill: 0x3a4652, textColor: '#eef3ea', size: 30 }));
   }
 }

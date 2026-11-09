@@ -19,7 +19,7 @@ for (let s = 0; s < SECONDS; s++) {
     g.setSpeed(3);
     const allies = window.__allies;
     const R = window.__rules;
-    const attackers = allies.filter(a => !['repair', 'money', 'buff'].includes(a.kind));
+    const attackers = allies.filter(a => !['repair', 'money', 'buff'].includes(a.kind) && R.isUnlocked(g.save, a.id));
     // 빈 칸 채우기
     for (;;) {
       const i = g.firstEmpty();

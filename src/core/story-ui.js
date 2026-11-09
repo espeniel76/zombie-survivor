@@ -1,6 +1,6 @@
 // 이야기 화면 공용 부품: 한 장씩 넘기는 이야기, 웨이브 중에 잠깐 뜨는 장 카드
 // 글자는 천천히 나타나고 사라진다(번쩍임 없음).
-import { W, H, COLOR, text, button } from './ui.js';
+import { W, H, COLOR, text, button, disableAll } from './ui.js';
 
 // 한 장씩 넘기는 이야기. 다 보거나 건너뛰면 onDone()
 export function storyPages(scene, pages, onDone, depth = 200) {
@@ -41,10 +41,14 @@ export function storyPages(scene, pages, onDone, depth = 200) {
     paint();
   }
   function finish() {
+    disableAll(c);
+    scene.tweens.killTweensOf(c);
     scene.tweens.add({ targets: c, alpha: 0, duration: 300, onComplete: () => c.destroy() });
     onDone?.();
   }
   paint();
+  c.setAlpha(0);
+  scene.tweens.add({ targets: c, alpha: 1, duration: 320, ease: 'Quad.Out' });
   return c;
 }
 

@@ -9,6 +9,28 @@ export const FIRST_BREAK = 15; // 첫 웨이브 전 준비 시간(초)
 export const BOSS_EVERY = 5;
 export const MAX_ALIVE = 160;
 
+// ── 메인 화면 상점(판이 끝나도 남는 것) ──
+// 좀비를 잡으면 코인을 떨어뜨리고, 주운 코인(보유 코인)은 판이 끝나도 남는다.
+// 신화는 메인 화면 상점에서 보유 코인으로 한 번 해금해야 전장 상점에 나온다.
+export const MYTHIC_UNLOCK = 2000;
+const DROP = { walker: 1, runner: 1, spitter: 2, brute: 4, boss: 30 };
+export function dropCoins(kind) {
+  return DROP[kind] ?? 1;
+}
+export function needsUnlock(id) {
+  return ALLY[id].tier === 5;
+}
+export function isUnlocked(save, id) {
+  return !needsUnlock(id) || (save?.meta?.unlocked || []).includes(id);
+}
+// 해금: 성공하면 save를 바꾸고 true
+export function unlockMythic(save, id) {
+  if (!needsUnlock(id) || isUnlocked(save, id) || (save.coins || 0) < MYTHIC_UNLOCK) return false;
+  save.coins -= MYTHIC_UNLOCK;
+  save.meta.unlocked = [...(save.meta.unlocked || []), id];
+  return true;
+}
+
 // ── 3×3 칸 ──
 // 0 1 2
 // 3 4 5

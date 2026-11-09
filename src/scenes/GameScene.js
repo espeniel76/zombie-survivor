@@ -80,6 +80,7 @@ export class GameScene extends Phaser.Scene {
   // data.preview = 아군 id → 도감 미리보기: 그 아군 하나가 끝없이 오는 좀비와 싸우는 모습만 보여 준다(기록·이야기 없음)
   create(data) {
     this.preview = data?.preview || null;
+    this.previewFrom = data?.from || 'book';
     this.save = loadSave();
     this.speed = 1;
     this.t = 0;
@@ -90,6 +91,7 @@ export class GameScene extends Phaser.Scene {
     this.baseMax = R.BASE_HP;
     this.baseHp = R.BASE_HP;
     this.kills = 0;
+    this.runCoins = 0; // 이번 판에 주운 코인(보유 코인에 더해진다)
     this.cells = Array(9).fill(null);
     this.zombies = [];
     this.zPool = [];
@@ -271,6 +273,7 @@ export class GameScene extends Phaser.Scene {
 
   buy(id, prefer = -1) {
     const a = ALLY[id];
+    if (!R.isUnlocked(this.save, id)) return { ok: false, msg: '메인 화면 상점에서 먼저 해금해야 해요' };
     if (this.coins < a.price) return { ok: false, msg: '코인이 부족해요' };
     let i = prefer >= 0 && !this.cells[prefer] ? prefer : this.firstEmpty();
     if (i < 0) return { ok: false, msg: '빈 칸이 없어요. 아군을 팔거나 옮겨 보세요.' };
@@ -462,6 +465,7 @@ export class GameScene extends Phaser.Scene {
     this.ui.banner(`웨이브 ${this.wave} 막아냄!  +${bonus}코인${fix > 0 ? `
 기지 수리 +${fix}` : ''}`);
     this.snd('win');
+    writeSave(); // 주운 코인 저장
     // 화면에 남은 침은 치운다
     for (const s of this.spits) s.img.destroy();
     this.spits = [];
@@ -474,11 +478,12 @@ export class GameScene extends Phaser.Scene {
     const cleared = Math.max(0, this.wave - 1);
     const best = this.save.best;
     const newBest = cleared > (best.wave || 0);
+    const runCoins = this.runCoins;
     best.wave = Math.max(best.wave || 0, cleared);
     best.kills = Math.max(best.kills || 0, this.kills);
     writeSave();
     this.snd('lose');
-    this.ui.showResult({ wave: this.wave, cleared, kills: this.kills, newBest });
+    this.ui.showResult({ wave: this.wave, cleared, kills: this.kills, newBest, runCoins });
   }
 
   spawnZombie(kind) {
@@ -1076,6 +1081,13 @@ export class GameScene extends Phaser.Scene {
     const reward = R.zombieReward(z.kind, this.wave);
     this.coins += reward;
     this.kills++;
+    // 떨어뜨린 코인은 보유 코인으로(미리보기에서는 없음)
+    if (!this.preview) {
+      const drop = R.dropCoins(z.kind);
+      this.runCoins += drop;
+      this.save.coins = (this.save.coins || 0) + drop;
+      this.ui.dropCoin(z.x, z.y, drop);
+    }
     this.puff(z.x, z.y, z.r / 14, 0xb8bfc4);
     if (this.save.settings.numbers || z.def.boss) this.floatText(z.x, z.y - 8, `+${reward}`, '#ffd84a', z.def.boss ? 34 : 18, true);
     this.snd(z.def.boss ? 'bosspoof' : 'poof', z.x);
