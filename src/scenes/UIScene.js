@@ -65,8 +65,10 @@ export class UIScene extends Phaser.Scene {
     this.modal = null;
     this.shopTier = 0;
 
+    this.preview = this.game_.preview ? ALLY[this.game_.preview] : null;
     this.buildHud();
-    this.buildBottom();
+    if (this.preview) this.buildPreviewBottom();
+    else this.buildBottom();
 
     this.bannerText = text(this, W / 2, 330, '', 44, COLOR.text, { strokeThickness: 8 }).setDepth(50).setAlpha(0);
     // 다음 웨이브 직전 3초 카운트(숫자만 바뀌고 밝기는 그대로)
@@ -77,6 +79,11 @@ export class UIScene extends Phaser.Scene {
     this.toastBox.add([this.toastBg, this.toastText]);
 
     const kb = this.input.keyboard;
+    if (this.preview) {
+      kb.on('keydown-ESC', () => this.backToBook());
+      kb.on('keydown-F', () => this.cycleSpeed());
+      return;
+    }
     kb.on('keydown-ESC', () => !this.storyOpen && (this.modal ? this.closeModal() : this.openPause()));
     kb.on('keydown-P', () => !this.modal && this.openPause());
     kb.on('keydown-S', () => !this.modal && this.openShop(-1));
@@ -84,8 +91,7 @@ export class UIScene extends Phaser.Scene {
     kb.on('keydown-F', () => this.cycleSpeed());
 
     // 처음 게임을 시작하면 프롤로그를 한 번 보여 준다(그동안 게임은 멈춘다)
-    if (!this.save.story.prologue && !this.game_.trial) this.time.delayedCall(60, () => this.showPrologue());
-    if (this.game_.trial) text(this, W / 2, 210, '체험 모드 · 코인 넉넉 · 각성 게이지 4배 · 기록 저장 안 됨', 20, '#c9b8ff', { strokeThickness: 4 }).setDepth(40);
+    if (!this.save.story.prologue) this.time.delayedCall(60, () => this.showPrologue());
   }
 
   showPrologue() {
@@ -118,6 +124,14 @@ export class UIScene extends Phaser.Scene {
     this.hpText = text(this, W / 2, 125, '', 20, COLOR.text);
     this.bossBar = this.add.graphics();
     this.bossText = text(this, W / 2, 182, '', 20, COLOR.text);
+    if (this.preview) {
+      const a = this.preview;
+      const t = TIERS[a.tier];
+      this.waveText.setText(a.name).setColor(t.text);
+      this.statusText.setText(`${t.name} ${a.role || KIND_LABEL[a.kind]} · 미리보기`);
+      this.coinIcon.setVisible(false);
+      this.coinText.setVisible(false);
+    }
   }
 
   buildBottom() {
@@ -133,6 +147,35 @@ export class UIScene extends Phaser.Scene {
     button(this, 650, y, 90, 92, 'II', () => this.openPause(), { fill: 0x3a4652, textColor: '#eef3ea', size: 30 });
   }
 
+  // 도감 미리보기: 아래쪽에 설명과 '도감으로' 버튼
+  buildPreviewBottom() {
+    const a = this.preview;
+    const t = TIERS[a.tier];
+    const top = a.hero ? 990 : 1030;
+    const g = this.add.graphics();
+    g.fillStyle(0x0d1116, 0.88);
+    g.fillRect(0, top, W, H - top);
+    g.lineStyle(2, t.color, 1);
+    g.lineBetween(0, top, W, top);
+    let y = top + 32;
+    if (a.quote) {
+      text(this, W / 2, y, `“${a.quote}”`, 21, '#ffd84a', { strokeThickness: 0, bold: false, wrap: W - 60 });
+      y += 36;
+    }
+    text(this, W / 2, y, a.desc, 22, COLOR.text, { strokeThickness: 0, bold: false, wrap: W - 60 });
+    y += 34;
+    text(this, W / 2, y, statsLine(a.kind, R.allyStats(a.id, 1)), 19, COLOR.dim, { strokeThickness: 0, bold: false });
+    if (a.hero) text(this, W / 2, y + 32, '게이지가 차면 영웅을 눌러 각성해 보세요', 19, '#c9b8ff', { strokeThickness: 0, bold: false });
+    const by = 1212;
+    button(this, 250, by, 420, 92, '도감으로 돌아가기', () => this.backToBook(), { fill: COLOR.orange, textColor: '#2a1600', size: 32 });
+    this.speedBtn = button(this, 580, by, 180, 92, '1배속', () => this.cycleSpeed(), { fill: 0x3a4652, textColor: '#eef3ea', size: 26 });
+  }
+
+  backToBook() {
+    this.scene.stop('Game');
+    this.scene.start('Title', { book: true });
+  }
+
   cycleSpeed() {
     const next = { 1: 2, 2: 3, 3: 1 }[this.game_.speed];
     this.game_.setSpeed(next);
@@ -142,6 +185,10 @@ export class UIScene extends Phaser.Scene {
   update() {
     const g = this.game_;
     if (!g || !g.sys.isActive() && !g.sys.isPaused()) return;
+    if (this.preview) {
+      this.updateHpBar(g);
+      return;
+    }
     this.waveText.setText(g.wave === 0 ? '준비' : `웨이브 ${g.wave}`);
     if (g.phase === 'break') this.statusText.setText(`웨이브 ${g.wave + 1} 시작까지 ${Math.ceil(Math.max(0, g.phaseLeft))}초`);
     const counting = g.phase === 'break' && g.phaseLeft <= 3 && g.phaseLeft > 0 && !this.modal && !this.storyOpen;
@@ -152,16 +199,7 @@ export class UIScene extends Phaser.Scene {
     this.coinText.setText(R.formatNum(g.coins));
     this.coinIcon.x = 700 - this.coinText.width - 22;
     this.skipBtn.setVisible(g.phase === 'break');
-
-    const k = g.baseHp / g.baseMax;
-    const bx = 24;
-    const bw = W - 48;
-    this.hpBar.clear();
-    this.hpBar.fillStyle(0x000000, 0.6);
-    this.hpBar.fillRoundedRect(bx, 112, bw, 26, 8);
-    this.hpBar.fillStyle(k > 0.5 ? 0x6cc24a : k > 0.25 ? 0xffb347 : 0xe5534b, 1);
-    if (k > 0) this.hpBar.fillRoundedRect(bx, 112, Math.max(16, bw * k), 26, 8);
-    this.hpText.setText(`기지 ${Math.ceil(g.baseHp)} / ${g.baseMax}`);
+    this.updateHpBar(g);
 
     this.bossBar.clear();
     if (g.boss && !g.boss.dead) {
@@ -174,6 +212,18 @@ export class UIScene extends Phaser.Scene {
     } else {
       this.bossText.setText('');
     }
+  }
+
+  updateHpBar(g) {
+    const k = g.baseHp / g.baseMax;
+    const bx = 24;
+    const bw = W - 48;
+    this.hpBar.clear();
+    this.hpBar.fillStyle(0x000000, 0.6);
+    this.hpBar.fillRoundedRect(bx, 112, bw, 26, 8);
+    this.hpBar.fillStyle(k > 0.5 ? 0x6cc24a : k > 0.25 ? 0xffb347 : 0xe5534b, 1);
+    if (k > 0) this.hpBar.fillRoundedRect(bx, 112, Math.max(16, bw * k), 26, 8);
+    this.hpText.setText(`기지 ${Math.ceil(g.baseHp)} / ${g.baseMax}`);
   }
 
   // 영웅 컷인: 화면을 가로지르는 띠 + 큰 초상 + 이름·대사. 그동안 전장은 잠깐 느려진다.
@@ -412,7 +462,7 @@ export class UIScene extends Phaser.Scene {
   toTitle() {
     this.modal = null;
     this.scene.stop('Game');
-    this.scene.start('Title');
+    this.scene.start('Title', { book: false });
   }
 
   // ── 결과 ──
@@ -423,8 +473,7 @@ export class UIScene extends Phaser.Scene {
     c.add(text(this, W / 2, H / 2 - 190, `웨이브 ${wave}에서 쓰러짐`, 30, COLOR.text));
     c.add(text(this, W / 2, H / 2 - 110, `막아낸 웨이브  ${cleared}`, 30, COLOR.greenText));
     c.add(text(this, W / 2, H / 2 - 60, `처치한 좀비  ${R.formatNum(kills)}`, 30, COLOR.text));
-    const recordLine = this.game_.trial ? '체험 모드 기록은 저장되지 않아요' : newBest ? '최고 기록!' : `최고 기록  웨이브 ${this.save.best.wave}`;
-    c.add(text(this, W / 2, H / 2 + 0, recordLine, this.game_.trial ? 24 : 30, newBest ? COLOR.orangeText : COLOR.dim));
+    c.add(text(this, W / 2, H / 2 + 0, newBest ? '최고 기록!' : `최고 기록  웨이브 ${this.save.best.wave}`, 30, newBest ? COLOR.orangeText : COLOR.dim));
     c.add(button(this, W / 2, H / 2 + 140, 400, 88, '다시 하기', () => {
       this.modal = null;
       this.game_.scene.restart();

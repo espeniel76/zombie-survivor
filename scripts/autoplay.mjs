@@ -8,7 +8,7 @@ const page = await browser.newPage({ viewport: { width: 450, height: 800 } });
 page.on('pageerror', e => console.log('pageerror', e.message));
 await page.goto(process.env.SMOKE_URL || 'http://localhost:5181/');
 await page.waitForTimeout(1000);
-await page.evaluate(() => window.__game.scene.getScene('Title').scene.start('Game'));
+await page.evaluate(() => window.__game.scene.getScene('Title').scene.start('Game', { preview: null }));
 await page.waitForTimeout(800);
 
 let lastWave = -1;

@@ -18,7 +18,6 @@ export const CELL = 92;
 export const GAP = 8;
 export const HALF = (CELL * 3 + GAP * 2) / 2; // 기지 반 폭 146
 const SPAWN_R = 680;
-const TRIAL_COINS = 200000;
 const NEAR_ONLY = new Set(['flame', 'push', 'timestop', 'stone']);
 const ALLY_DY = 6; // 아군 몸 중심을 칸 가운데보다 살짝 아래로(모자 자리)
 
@@ -78,16 +77,16 @@ export class GameScene extends Phaser.Scene {
     super('Game');
   }
 
-  // data.trial = 체험 모드: 코인 넉넉히, 각성 게이지 4배 빠르게, 기록은 남기지 않음
+  // data.preview = 아군 id → 도감 미리보기: 그 아군 하나가 끝없이 오는 좀비와 싸우는 모습만 보여 준다(기록·이야기 없음)
   create(data) {
-    this.trial = !!data?.trial;
+    this.preview = data?.preview || null;
     this.save = loadSave();
     this.speed = 1;
     this.t = 0;
     this.wave = 0;
     this.phase = 'break';
     this.phaseLeft = R.FIRST_BREAK;
-    this.coins = this.trial ? TRIAL_COINS : R.START_COINS;
+    this.coins = this.preview ? 0 : R.START_COINS;
     this.baseMax = R.BASE_HP;
     this.baseHp = R.BASE_HP;
     this.kills = 0;
@@ -135,6 +134,38 @@ export class GameScene extends Phaser.Scene {
     this.applySpeed();
     this.scene.launch('UI');
     this.ui = this.scene.get('UI');
+    if (this.preview) this.setupPreview(this.preview);
+  }
+
+  // ── 도감 미리보기 ──
+  // 가운데 칸에 그 아군을 세우고, 등급에 맞는 좀비를 끝없이 보낸다. 기지는 무너지지 않는다.
+  setupPreview(id) {
+    const a = ALLY[id];
+    // 옆 칸이 있어야 보이는 능력(지휘관·메아리술사)은 신입 경비 넷을 옆에 세운다
+    if (a.kind === 'buff' || a.kind === 'echo') for (const k of [1, 3, 5, 7]) this.putAlly(k, 'guard');
+    this.putAlly(4, id);
+    // 기지 체력이 줄어야 보이는 능력은 기지가 깎인 채로 시작
+    if (['repair', 'pact', 'phoenix', 'mirror'].includes(a.kind)) this.baseHp = Math.round(this.baseMax * 0.4);
+    this.wave = 1 + a.tier * 2;
+    this.phase = 'wave';
+    this.spec = R.waveSpec(this.wave);
+    this.queue = [];
+    this.spawnT = 0.6;
+    if (a.hero) {
+      this.time.delayedCall(350, () => {
+        this.heroes.arrival(4);
+        this.ui.heroCutIn(id, '합류');
+      });
+    }
+  }
+
+  putAlly(i, id) {
+    const u = { id, level: 1, cd: 0, t: 0, sprite: null, aura: null };
+    this.cells[i] = u;
+    this.placeSprite(i, u);
+    this.refreshStats();
+    this.drawCell(i);
+    return u;
   }
 
   // ── 배경 ──
@@ -224,6 +255,10 @@ export class GameScene extends Phaser.Scene {
     // 각성 게이지가 가득 찬 영웅을 누르면 바로 각성
     if (u && ALLY[u.id].hero && u.gauge >= 100 && this.phase === 'wave') {
       this.awaken(i);
+      return;
+    }
+    if (this.preview) {
+      if (u && ALLY[u.id].hero && !u.awakeUntil) this.ui.toast(`각성 게이지 ${Math.floor(u.gauge || 0)}% · 가득 차면 눌러서 각성`);
       return;
     }
     if (u) this.ui.openAllyPanel(i);
@@ -364,7 +399,7 @@ export class GameScene extends Phaser.Scene {
       }
       if (this.phase !== 'wave' || u.awakeUntil) continue;
       const before = u.gauge || 0;
-      u.gauge = Math.min(100, before + ((dt * 100) / R.AWAKEN_CHARGE) * (this.trial ? 4 : 1));
+      u.gauge = Math.min(100, before + ((dt * 100) / R.AWAKEN_CHARGE) * (this.preview ? 5 : 1));
       if (before < 100 && u.gauge >= 100) {
         this.snd('sparkle', cellPos(i).x);
         this.ui.toast(`${ALLY[u.id].name} 각성 준비! 눌러서 각성`);
@@ -438,12 +473,10 @@ export class GameScene extends Phaser.Scene {
     this.phase = 'over';
     const cleared = Math.max(0, this.wave - 1);
     const best = this.save.best;
-    const newBest = !this.trial && cleared > (best.wave || 0);
-    if (!this.trial) {
-      best.wave = Math.max(best.wave || 0, cleared);
-      best.kills = Math.max(best.kills || 0, this.kills);
-      writeSave();
-    }
+    const newBest = cleared > (best.wave || 0);
+    best.wave = Math.max(best.wave || 0, cleared);
+    best.kills = Math.max(best.kills || 0, this.kills);
+    writeSave();
     this.snd('lose');
     this.ui.showResult({ wave: this.wave, cleared, kills: this.kills, newBest });
   }
@@ -511,6 +544,7 @@ export class GameScene extends Phaser.Scene {
       this.phaseLeft -= dt;
       if (this.phaseLeft <= 0) this.startWave();
     } else if (this.phase === 'wave') {
+      if (this.preview && this.queue.length < 3) for (let k = 0; k < 10; k++) this.queue.push(R.pickZombie(this.wave));
       this.spawnT -= dt;
       if (this.spawnT <= 0 && this.queue.length && this.zombies.length < R.MAX_ALIVE) {
         this.spawnZombie(this.queue.shift());
@@ -536,7 +570,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.phase === 'wave' && this.queue.length === 0 && this.zombies.length === 0) this.endWave();
-    if (this.baseHp <= 0) this.gameOver();
+    if (this.baseHp <= 0) {
+      if (this.preview) this.baseHp = this.baseMax;
+      else this.gameOver();
+    }
   }
 
   updateZombies(dt) {

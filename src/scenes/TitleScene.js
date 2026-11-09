@@ -20,7 +20,8 @@ export class TitleScene extends Phaser.Scene {
     super('Title');
   }
 
-  create() {
+  // data.book = 미리보기에서 돌아올 때 도감을 바로 연다
+  create(data) {
     performance.mark('title');
     this.save = loadSave();
     this.input.once('pointerdown', unlockAudio);
@@ -32,7 +33,8 @@ export class TitleScene extends Phaser.Scene {
     this.add.rectangle(W / 2, H / 2, W, H, 0x0b0e12, 0.45);
 
     this.main = this.add.container(0, 0);
-    this.showMain();
+    if (data?.book) this.showBook();
+    else this.showMain();
     window.__load?.done();
   }
 
@@ -68,13 +70,19 @@ export class TitleScene extends Phaser.Scene {
     c.add(text(this, W / 2, 300, '좀비 생존자', 96, COLOR.text, { strokeThickness: 12 }));
     c.add(text(this, W / 2, 400, '가운데 9칸을 지켜라', 34, COLOR.greenText));
     const best = this.save.best;
-    c.add(text(this, W / 2, 470, best.wave ? `최고 기록  웨이브 ${best.wave} · 처치 ${R.formatNum(best.kills)}` : '아군을 세워 사방에서 오는 좀비를 막으세요', 24, COLOR.dim));
-    c.add(button(this, W / 2, 660, 440, 104, '게임 시작', () => this.scene.start('Game', { trial: false }), { size: 44 }));
-    c.add(button(this, W / 2, 776, 440, 76, '영웅 체험 모드', () => this.scene.start('Game', { trial: true }), { fill: 0x8a5cff, textColor: '#ffffff', size: 28 }));
-    c.add(button(this, W / 2, 878, 440, 84, '아군 도감', () => this.showBook(), { fill: COLOR.orange, textColor: '#2a1600', size: 32 }));
-    c.add(button(this, W / 2, 978, 440, 84, '이야기', () => this.showStory(), { fill: 0x5a4a7a, textColor: '#f4eeff', size: 32 }));
-    c.add(button(this, W / 2, 1076, 440, 76, '설정', () => this.showSettings(), { fill: 0x3a4652, textColor: '#eef3ea', size: 28 }));
-    c.add(text(this, W / 2, 1180, '빈 칸을 누르면 상점 · 아군을 누르면 강화/옮기기/판매', 21, COLOR.dim, { strokeThickness: 0 }));
+    if (best.wave) c.add(text(this, W / 2, 470, `최고 기록  웨이브 ${best.wave} · 처치 ${R.formatNum(best.kills)}`, 24, COLOR.dim));
+    // 큰 버튼은 '게임 시작' 하나만. 나머지는 아래 작은 버튼 한 줄
+    c.add(button(this, W / 2, 720, 460, 116, '게임 시작', () => this.scene.start('Game', { preview: null }), { size: 46 }));
+    const small = [
+      ['아군 도감', () => this.showBook(), COLOR.orangeText],
+      ['이야기', () => this.showStory(), '#f4eeff'],
+      ['설정', () => this.showSettings(), COLOR.text],
+    ];
+    const bw = 196;
+    const gap = 12;
+    const x0 = W / 2 - ((bw + gap) * (small.length - 1)) / 2;
+    small.forEach(([label, fn, color], k) =>
+      c.add(button(this, x0 + k * (bw + gap), 1150, bw, 72, label, fn, { fill: 0x26303a, textColor: color, size: 24 })));
   }
 
   // 이야기: 프롤로그 다시 보기 + 지금까지 연 장
@@ -132,19 +140,13 @@ export class TitleScene extends Phaser.Scene {
           g.strokeRoundedRect(x - 42, y - 42, 84, 84, 10);
           const img = allyView(this, x, y + 10, a.id, 0.92);
           const zone = this.add.zone(x, y, 84, 84).setInteractive({ useHandCursor: true });
-          zone.on('pointerup', () => {
-            detail.removeAll(true);
-            detail.add(text(this, W / 2, 996, `${a.name}  ·  ${t.name} ${a.role || KIND_LABEL[a.kind]}  ·  ${R.formatNum(a.price)}코인`, 26, t.text));
-            if (a.quote) detail.add(text(this, W / 2, 1032, `“${a.quote}”`, 21, '#ffd84a', { strokeThickness: 0, bold: false }));
-            detail.add(text(this, W / 2, a.quote ? 1064 : 1040, a.desc, 22, COLOR.text, { strokeThickness: 0, bold: false }));
-            detail.add(text(this, W / 2, a.quote ? 1096 : 1076, statsLine(a.kind, R.allyStats(a.id, 1)), 19, COLOR.dim, { strokeThickness: 0, bold: false }));
-          });
+          zone.on('pointerup', () => this.scene.start('Game', { preview: a.id }));
           c.add([g, img, zone]);
         });
       }
     });
     c.add(detail);
-    detail.add(text(this, W / 2, 1040, '아군을 눌러 보세요', 24, COLOR.dim, { strokeThickness: 0 }));
+    detail.add(text(this, W / 2, 1040, '아군을 누르면 싸우는 모습을 미리 볼 수 있어요', 24, COLOR.dim, { strokeThickness: 0 }));
     c.add(button(this, W / 2, 1170, 300, 80, '뒤로', () => this.showMain(), { fill: 0x3a4652, textColor: '#eef3ea' }));
   }
 }

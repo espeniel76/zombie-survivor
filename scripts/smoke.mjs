@@ -27,15 +27,32 @@ await page.goto(URL);
 await wait(1200);
 await shot('1-title');
 
-await tapGame(360, 878); // 아군 도감
+await tapGame(152, 1150); // 아군 도감
 await wait(400);
-await tapGame(110, 216);
-await wait(300);
 await shot('2-book');
+await tapGame(160, 200); // 첫 아군(신입 경비) → 미리보기
+await wait(2500);
+await shot('2b-preview');
+await tapGame(250, 1212); // 도감으로 돌아가기
+await wait(500);
+// 영웅 미리보기(옆 칸이 필요한 메아리술사, 신화 중력 조종자)
+for (const id of ['echo', 'gravity']) {
+  await page.evaluate(id => window.__game.scene.getScene('Title').scene.start('Game', { preview: id }), id);
+  await wait(4000);
+  await page.evaluate(() => {
+    const g = window.__game.scene.getScene('Game');
+    g.cells[4].gauge = 100;
+    g.onCellTap(4); // 각성
+  });
+  await wait(2500);
+  await shot(`2c-preview-${id}`);
+  await tapGame(250, 1212);
+  await wait(500);
+}
 await tapGame(360, 1170); // 뒤로
 await wait(300);
 
-await tapGame(360, 660); // 게임 시작
+await tapGame(360, 720); // 게임 시작
 await wait(1000);
 await tapGame(360, 1160); // 처음 이야기(프롤로그) 건너뛰기
 await wait(600);
