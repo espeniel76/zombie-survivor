@@ -174,15 +174,23 @@ export class TitleScene extends Phaser.Scene {
   }
 
   // 이야기: 프롤로그 다시 보기 + 지금까지 연 장
-  showStory() {
+  // 한 쪽에 6장씩, ◀ ▶ 로 넘긴다
+  showStory(page = 0) {
     this.clear();
     const c = this.main;
     c.add(panel(this, W / 2, H / 2, 692, 1200));
     c.add(text(this, W / 2, 110, '이야기', 40, COLOR.text));
     c.add(text(this, W / 2, 158, '검은 비가 내린 뒤, 아홉 칸의 기록', 22, COLOR.dim, { strokeThickness: 0 }));
     const seen = this.save.story.seen;
-    CHAPTERS.forEach((ch, k) => {
-      const y = 250 + k * 116;
+    const PER = 6;
+    const pages = Math.ceil(CHAPTERS.length / PER);
+    if (pages > 1) {
+      c.add(button(this, W / 2 - 150, 1062, 96, 56, '◀', () => this.showStory((page + pages - 1) % pages), { fill: 0x3a4652, textColor: '#eef3ea', size: 26 }));
+      c.add(text(this, W / 2, 1062, `${page + 1} / ${pages}`, 26, COLOR.text));
+      c.add(button(this, W / 2 + 150, 1062, 96, 56, '▶', () => this.showStory((page + 1) % pages), { fill: 0x3a4652, textColor: '#eef3ea', size: 26 }));
+    }
+    CHAPTERS.slice(page * PER, page * PER + PER).forEach((ch, k) => {
+      const y = 250 + k * 128;
       const open = seen.includes(ch.wave) || (this.save.best.wave || 0) >= ch.wave;
       const g = this.add.graphics();
       g.fillStyle(open ? 0x232b33 : 0x161b20, 1);

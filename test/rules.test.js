@@ -3,7 +3,9 @@ import {
   awakenStats,
   neighbors, upgradeCost, sellPrice, rateBuffAt, allyStats, hpMul, waveSpec, pickZombie,
   zombieHp, isBossWave, dropCoins, isUnlocked, unlockMythic, MYTHIC_UNLOCK,
+  bossKind, waveEvent, EVENTS, FINAL_WAVE,
 } from '../src/core/rules.js';
+import { rollPerks, perkMods } from '../src/data/perks.js';
 import { ALLIES, ALLY, TIERS, MAX_ALLY_LEVEL } from '../src/data/allies.js';
 
 describe('3×3 칸', () => {
@@ -158,5 +160,45 @@ describe('메인 상점', () => {
     expect(dropCoins('walker')).toBe(1);
     expect(dropCoins('brute')).toBeGreaterThan(dropCoins('runner'));
     expect(dropCoins('boss')).toBeGreaterThan(dropCoins('brute'));
+  });
+});
+
+describe('30웨이브 이후', () => {
+  it('20웨이브부터 새 좀비가 섞이고, 그 전에는 없다', () => {
+    const kinds = w => {
+      const seen = new Set();
+      for (let r = 0; r < 1; r += 0.005) seen.add(pickZombie(w, () => r));
+      return seen;
+    };
+    expect(kinds(19).has('armored')).toBe(false);
+    expect(kinds(20).has('armored')).toBe(true);
+    expect(kinds(30).has('healer')).toBe(true);
+  });
+  it('거대 좀비는 20웨이브부터 번갈아 나오고 50웨이브는 마지막 보스', () => {
+    expect(bossKind(5)).toBe('boss');
+    expect(bossKind(15)).toBe('boss');
+    expect(bossKind(20)).toBe('charger');
+    expect(bossKind(25)).toBe('gravedigger');
+    expect(bossKind(30)).toBe('ironclad');
+    expect(bossKind(35)).toBe('boss');
+    expect(bossKind(FINAL_WAVE)).toBe('rainlord');
+    expect(bossKind(55)).toBe('boss');
+  });
+  it('이변은 31웨이브부터, 같은 이변이 두 번 연달아 나오지 않는다', () => {
+    expect(waveEvent(30)).toBe(null);
+    expect(waveEvent(FINAL_WAVE)).toBe(null);
+    expect(waveEvent(35)).toBe(null); // 보스 웨이브에는 이변이 없다
+    for (let r = 0; r < 1; r += 0.1) {
+      const e = waveEvent(31, 'fog', () => r);
+      expect(EVENTS[e]).toBeTruthy();
+      expect(e).not.toBe('fog');
+    }
+  });
+  it('보상 카드는 서로 다른 3장, 겹치면 더 세진다', () => {
+    const c = rollPerks(() => 0.5);
+    expect(new Set(c).size).toBe(3);
+    expect(perkMods({}).dmg).toBe(1);
+    expect(perkMods({ power: 2 }).dmg).toBeCloseTo(1.3);
+    expect(perkMods({ crit: 9 }).crit).toBe(0.5);
   });
 });

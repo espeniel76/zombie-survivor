@@ -6,11 +6,13 @@ import { ZOMBIES } from '../data/zombies.js';
 import * as R from '../core/rules.js';
 import { loadSave, writeSave } from '../core/save.js';
 import { sfx } from '../core/sfx.js';
-import { W, H, FONT } from '../core/ui.js';
+import { W, H, FONT, josa } from '../core/ui.js';
 import { TIERS } from '../data/allies.js';
 import { allyView, BODY_OY } from '../render/sprites.js';
 import { HeroSystem, PASSIVE_HEROES } from '../systems/heroes.js';
 import { chapterAt } from '../data/story.js';
+import { FoeSystem } from '../systems/foes.js';
+import { perkMods, PERK } from '../data/perks.js';
 
 export const CX = 360;
 export const CY = 650;
@@ -92,6 +94,10 @@ export class GameScene extends Phaser.Scene {
     this.baseHp = R.BASE_HP;
     this.kills = 0;
     this.runCoins = 0; // 이번 판에 주운 코인(보유 코인에 더해진다)
+    this.perks = {}; // 고른 보상 카드(id → 개수)
+    this.event = null; // 이번 웨이브 이변
+    this.lastEvent = null;
+    this.mods = this.computeMods();
     this.cells = Array(9).fill(null);
     this.zombies = [];
     this.zPool = [];
@@ -132,6 +138,7 @@ export class GameScene extends Phaser.Scene {
     this.rangeG = this.add.graphics().setDepth(4);
     this.lineG = this.add.graphics().setDepth(9);
     this.heroes = new HeroSystem(this, { CX, CY, HALF, cellPos });
+    this.foes = new FoeSystem(this, { CX, CY });
 
     this.applySpeed();
     this.scene.launch('UI');
@@ -376,13 +383,53 @@ export class GameScene extends Phaser.Scene {
     for (let k = 0; k < 9; k++) this.drawCell(k);
   }
 
+  // 보상 카드 + 이번 웨이브 이변을 합친 배율
+  computeMods() {
+    const p = perkMods(this.perks);
+    const e = this.event ? R.EVENTS[this.event] : {};
+    return {
+      ...p,
+      range: p.range * (e.range || 1),
+      coin: p.coin * (e.coin || 1),
+      zSpeed: e.zSpeed || 1,
+      zDmg: e.zDmg || 1,
+      zHp: e.hp || 1,
+      zSize: e.size || 1,
+      count: e.count || 1,
+    };
+  }
+
+  updateMods() {
+    this.mods = this.computeMods();
+    this.refreshStats();
+  }
+
+  // 보상 카드를 하나 받는다(같은 카드는 겹쳐진다)
+  addPerk(id) {
+    this.perks[id] = (this.perks[id] || 0) + 1;
+    if (id === 'wall') {
+      this.baseMax += 100;
+      this.baseHp = Math.min(this.baseMax, this.baseHp + 100);
+    }
+    if (id === 'loot') this.coins += this.wave * 80;
+    this.updateMods();
+    this.snd('level');
+    this.ui.toast(`${PERK[id].name} · ${PERK[id].desc}`);
+  }
+
   refreshStats() {
+    const m = this.mods;
     for (let i = 0; i < 9; i++) {
       const u = this.cells[i];
       if (!u) continue;
       u.buff = R.rateBuffAt(this.cells, i);
       u.st = R.allyStats(u.id, u.level, u.buff);
       if (ALLY[u.id].hero && u.awakeUntil > this.t) u.st = R.awakenStats(u.st); // 각성 중
+      if (m) {
+        if (u.st.rate) u.st.rate *= m.rate;
+        // 그림자 군주의 range는 칼날이 도는 둘레라서 그대로 둔다
+        if (u.st.range && ALLY[u.id].kind !== 'sweep') u.st.range = Math.round(u.st.range * m.range);
+      }
       if (u.aura) u.aura.setScale(u.st.range / 128);
     }
     this.heroes?.refresh();
@@ -402,7 +449,7 @@ export class GameScene extends Phaser.Scene {
       }
       if (this.phase !== 'wave' || u.awakeUntil) continue;
       const before = u.gauge || 0;
-      u.gauge = Math.min(100, before + ((dt * 100) / R.AWAKEN_CHARGE) * (this.preview ? 5 : 1));
+      u.gauge = Math.min(100, before + ((dt * 100) / R.AWAKEN_CHARGE) * (this.preview ? 5 : 1) * this.mods.gauge);
       if (before < 100 && u.gauge >= 100) {
         this.snd('sparkle', cellPos(i).x);
         this.ui.toast(`${ALLY[u.id].name} 각성 준비! 눌러서 각성`);
@@ -440,11 +487,22 @@ export class GameScene extends Phaser.Scene {
     this.wave++;
     this.phase = 'wave';
     this.spec = R.waveSpec(this.wave);
+    // 31웨이브부터는 웨이브마다 이변이 하나
+    this.event = R.waveEvent(this.wave, this.lastEvent);
+    if (this.event) this.lastEvent = this.event;
+    this.updateMods();
+    this.foes.applyEvent(this.event);
     this.queue = [];
-    for (let k = 0; k < this.spec.count; k++) this.queue.push(R.pickZombie(this.wave));
-    if (this.spec.boss) this.queue.splice(Math.floor(this.queue.length * 0.3), 0, 'boss');
+    const count = Math.max(1, Math.round(this.spec.count * this.mods.count));
+    for (let k = 0; k < count; k++) this.queue.push(R.pickZombie(this.wave));
+    const bossKind = this.spec.boss ? R.bossKind(this.wave) : null;
+    if (bossKind) this.queue.splice(Math.floor(this.queue.length * 0.3), 0, bossKind);
     this.spawnT = 0;
-    this.ui.banner(this.spec.boss ? `웨이브 ${this.wave} · 거대 좀비 등장!` : `웨이브 ${this.wave}`);
+    const ev = this.event ? R.EVENTS[this.event] : null;
+    if (this.wave === R.FINAL_WAVE) this.ui.banner(`웨이브 ${this.wave} · 마지막 밤\n${josa(ZOMBIES[bossKind].name, '이', '가')} 내려와요`);
+    else if (bossKind) this.ui.banner(`웨이브 ${this.wave} · ${ZOMBIES[bossKind].name} 등장!`);
+    else if (ev) this.ui.banner(`웨이브 ${this.wave} · ${ev.name}\n${ev.desc}`);
+    else this.ui.banner(`웨이브 ${this.wave}`);
     // 이야기: 이 웨이브에 장이 있고 아직 못 봤으면 배너 뒤에 보여 준다
     const ch = chapterAt(this.wave);
     if (ch && !this.save.story.seen.includes(ch.wave)) {
@@ -460,7 +518,7 @@ export class GameScene extends Phaser.Scene {
     this.coins += bonus;
     this.phase = 'break';
     this.phaseLeft = R.BREAK_TIME;
-    const fix = Math.max(0, Math.round(Math.min(this.baseMax - this.baseHp, this.baseMax * R.WAVE_REPAIR)));
+    const fix = Math.max(0, Math.round(Math.min(this.baseMax - this.baseHp, this.baseMax * (R.WAVE_REPAIR + this.mods.repair))));
     this.baseHp = Math.min(this.baseMax, this.baseHp + fix);
     this.ui.banner(`웨이브 ${this.wave} 막아냄!  +${bonus}코인${fix > 0 ? `
 기지 수리 +${fix}` : ''}`);
@@ -470,6 +528,13 @@ export class GameScene extends Phaser.Scene {
     for (const s of this.spits) s.img.destroy();
     this.spits = [];
     this.heroes.clearWave();
+    // 이변은 웨이브가 끝나면 걷힌다
+    const wasBoss = this.spec?.boss;
+    this.event = null;
+    this.updateMods();
+    this.foes.applyEvent(null);
+    // 거대 좀비 웨이브를 막으면 보상 카드 3장 중 하나를 고른다
+    if (wasBoss && !this.preview) this.ui.offerPerks();
   }
 
   gameOver() {
@@ -486,18 +551,20 @@ export class GameScene extends Phaser.Scene {
     this.ui.showResult({ wave: this.wave, cleared, kills: this.kills, newBest, runCoins });
   }
 
-  spawnZombie(kind) {
+  // at = {x, y}: 그 자리에서 나온다(소환·분열). 없으면 화면 밖 둘레에서.
+  spawnZombie(kind, at = null) {
     const def = ZOMBIES[kind];
-    const a = Math.random() * Math.PI * 2;
-    const x = CX + Math.cos(a) * SPAWN_R;
-    const y = CY + Math.sin(a) * SPAWN_R;
+    const a = at ? Math.atan2(at.y - CY, at.x - CX) : Math.random() * Math.PI * 2;
+    const x = at ? at.x : CX + Math.cos(a) * SPAWN_R;
+    const y = at ? at.y : CY + Math.sin(a) * SPAWN_R;
     let z = this.zPool.pop();
     if (!z) z = this.add.image(0, 0, def.tex);
     z.setTexture(def.tex).setPosition(x, y).setVisible(true).setActive(true).setDepth(def.boss ? 5.5 : 5).clearTint().setAlpha(1);
     z.kind = kind;
     z.def = def;
-    z.hp = z.maxHp = R.zombieHp(kind, this.wave);
-    z.dmg = def.damage * R.damageMul(this.wave);
+    const m = this.mods;
+    z.hp = z.maxHp = Math.max(1, Math.round(R.zombieHp(kind, this.wave) * (def.boss ? 1 : m.zHp)));
+    z.dmg = def.damage * R.damageMul(this.wave) * m.zDmg;
     z.r = def.radius;
     z.dead = false;
     z.slow = 0;
@@ -522,11 +589,14 @@ export class GameScene extends Phaser.Scene {
     z.petrified = 0;
     z.caughtBy = null;
     z.tornadoHit = 0;
-    z.setOrigin(0.5, BODY_OY).setRotation(0).setFlipX(Math.cos(a + Math.PI) < 0);
+    const size = def.boss ? 1 : m.zSize;
+    z.r = def.radius * size;
+    z.setOrigin(0.5, BODY_OY).setRotation(0).setScale(size).setFlipX(Math.cos(a + Math.PI) < 0);
+    this.foes.spawned(z);
     this.zombies.push(z);
     if (def.boss) {
       this.boss = z;
-      this.ui.banner('거대 좀비가 나타났어요!');
+      this.ui.banner(`${josa(def.name, '이', '가')} 나타났어요!`);
     }
   }
 
@@ -567,6 +637,7 @@ export class GameScene extends Phaser.Scene {
     this.updateSpits(dt);
     this.updateFlames(dt);
     this.drawLines(dt);
+    this.foes.draw(dt);
 
     if (this.zombies.some(z => z.dead)) this.zombies = this.zombies.filter(z => !z.dead);
     if (this.phase === 'wave') {
@@ -601,6 +672,7 @@ export class GameScene extends Phaser.Scene {
       z.setFlipX(dx < 0);
       const spit = z.def.spit;
       z.attacking = edge <= (spit ? spit.keep : z.r + 12);
+      if (this.foes.update(z, dt, edge)) continue; // 돌진 거인이 힘을 모으거나 달려드는 중
       if (spit && edge <= spit.keep) {
         z.spitT -= dt * (1 - slow);
         if (z.spitT <= 0) {
@@ -620,7 +692,7 @@ export class GameScene extends Phaser.Scene {
         continue;
       }
       const d = Math.hypot(dx, dy) || 1;
-      const v = z.def.speed * (1 - slow) * (1 - this.heroes.globalSlow) * dt;
+      const v = z.def.speed * this.mods.zSpeed * (1 - slow) * (1 - this.heroes.globalSlow) * dt;
       z.x += (dx / d) * v;
       z.y += (dy / d) * v;
     }
@@ -745,7 +817,7 @@ export class GameScene extends Phaser.Scene {
         continue;
       }
       if (a.kind === 'buff' || PASSIVE_HEROES.has(a.kind)) continue; // 메아리·거울·영혼·용·유령은 스스로 노리지 않는다
-      u.cd -= dt;
+      u.cd -= dt * this.foes.allyRateMul(); // 검은 비가 오면 느려진다
       if (a.kind === 'aura') {
         if (u.cd <= 0) {
           const hit = this.zombies.filter(z => !z.dead && Math.hypot(z.x - p.x, z.y - p.y) <= st.range + z.r * 0.5);
@@ -1050,7 +1122,14 @@ export class GameScene extends Phaser.Scene {
   hurt(z, amount, opts = {}) {
     if (z.dead || z.puppet) return; // 꼭두각시는 실이 끊길 때까지 다치지 않는다
     amount *= this.heroes.damageMul(z); // 시간 정지 중이면 더 아프다
+    amount *= this.mods.dmg * this.foes.armorMul(z); // 보상 카드 '화력', 철갑
+    let crit = false;
+    if (!opts.quiet && this.mods.crit && Math.random() < this.mods.crit) {
+      amount *= 2;
+      crit = true;
+    }
     z.hp -= amount;
+    if (z.def.blackRain) this.foes.checkBlackRain(z);
     if (opts.slow) {
       z.slow = Math.max(z.slowUntil > this.t ? z.slow : 0, opts.slow);
       z.slowUntil = this.t + opts.slowTime;
@@ -1065,7 +1144,7 @@ export class GameScene extends Phaser.Scene {
       if (opts.plague) z.plague = opts.plague; // 역병: 쓰러지면 주변으로 옮는다
     }
     if (!opts.quiet && this.save.settings.numbers && amount >= 1) {
-      this.floatText(z.x + (Math.random() - 0.5) * 16, z.y - z.r - 6, String(Math.round(amount)), '#ffffff', 20);
+      this.floatText(z.x + (Math.random() - 0.5) * 16, z.y - z.r - 6, String(Math.round(amount)), crit ? '#ffd84a' : '#ffffff', crit ? 26 : 20);
     }
     if (this.save.settings.flash && !opts.quiet && !opts.slow && !opts.poison) {
       z.setTintFill(0xffffff);
@@ -1078,28 +1157,50 @@ export class GameScene extends Phaser.Scene {
 
   killZombie(z) {
     z.dead = true;
-    const reward = R.zombieReward(z.kind, this.wave);
+    const reward = Math.round(R.zombieReward(z.kind, this.wave) * this.mods.coin);
     this.coins += reward;
     this.kills++;
     // 떨어뜨린 코인은 보유 코인으로(미리보기에서는 없음)
     if (!this.preview) {
       const drop = R.dropCoins(z.kind);
-      this.runCoins += drop;
-      this.save.coins = (this.save.coins || 0) + drop;
-      this.ui.dropCoin(z.x, z.y, drop);
+      if (drop > 0) {
+        this.runCoins += drop;
+        this.save.coins = (this.save.coins || 0) + drop;
+        this.ui.dropCoin(z.x, z.y, drop);
+      }
     }
     this.puff(z.x, z.y, z.r / 14, 0xb8bfc4);
     if (this.save.settings.numbers || z.def.boss) this.floatText(z.x, z.y - 8, `+${reward}`, '#ffd84a', z.def.boss ? 34 : 18, true);
     this.snd(z.def.boss ? 'bosspoof' : 'poof', z.x);
     if (z === this.boss) {
       this.boss = null;
-      this.ui.banner('거대 좀비를 쓰러뜨렸어요!');
+      if (z.def.final) this.finalBossDown();
+      else this.ui.banner(`${josa(z.def.name, '을', '를')} 쓰러뜨렸어요!`);
+    }
+    // 분열 좀비: 작은 좀비 둘로 갈라진다
+    const sp = z.def.split;
+    if (sp) {
+      for (let k = 0; k < sp.count; k++) {
+        const a = Math.random() * Math.PI * 2;
+        this.spawnZombie(sp.kind, { x: z.x + Math.cos(a) * 18, y: z.y + Math.sin(a) * 18 });
+      }
     }
     this.heroes.onKill(z);
     z.plague = null;
     z.puppet = null;
     z.setVisible(false).setActive(false);
     this.zPool.push(z);
+  }
+
+  // 비를 부르는 자를 쓰러뜨림 → 엔딩(처음 한 번은 보유 코인 보상). 그 뒤로는 끝없는 밤이 이어진다.
+  finalBossDown() {
+    const first = !this.save.story.ending;
+    if (first) {
+      this.save.story.ending = true;
+      this.save.coins = (this.save.coins || 0) + 1000;
+      writeSave();
+    }
+    this.ui.ending(first);
   }
 
   puff(x, y, size, color) {

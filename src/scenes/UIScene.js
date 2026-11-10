@@ -7,7 +7,8 @@ import { sfx } from '../core/sfx.js';
 import { W, H, COLOR, text, panel, button, settingsRows, appear, vanish, curtainIn, curtainOut } from '../core/ui.js';
 import { allyView } from '../render/sprites.js';
 import { storyPages, chapterCard } from '../core/story-ui.js';
-import { PROLOGUE } from '../data/story.js';
+import { PROLOGUE, ENDING } from '../data/story.js';
+import { PERKS, PERK, rollPerks } from '../data/perks.js';
 
 const KIND_LABEL = {
   bullet: '사격', splash: '폭발', strike: '폭격', flame: '화염', beam: '광선',
@@ -103,6 +104,51 @@ export class UIScene extends Phaser.Scene {
       this.save.story.prologue = true;
       writeSave();
       if (!this.modal && this.game_.phase !== 'over') this.scene.resume('Game');
+    });
+  }
+
+  // ── 보상 카드: 거대 좀비 웨이브를 막으면 3장 중 하나를 고른다(그동안 게임은 멈춘다) ──
+  offerPerks() {
+    this.time.delayedCall(700, () => {
+      if (this.game_.phase === 'over') return;
+      const ids = rollPerks();
+      this.perkChoices = ids;
+      const c = this.openModal();
+      c.add(text(this, W / 2, 250, '보상을 하나 고르세요', 40, COLOR.text));
+      c.add(text(this, W / 2, 300, '같은 카드를 또 고르면 효과가 겹쳐져요', 22, COLOR.dim, { strokeThickness: 0, bold: false }));
+      ids.forEach((id, k) => {
+        const p = PERK[id];
+        const y = 450 + k * 230;
+        const card = this.add.container(0, 0);
+        card.add(panel(this, W / 2, y, 600, 200, 0x1b222b, p.color, 22));
+        const have = this.game_.perks[id] || 0;
+        card.add(text(this, 110, y - 50, p.name, 36, '#ffffff', { ox: 0 }));
+        if (have) card.add(text(this, 610, y - 50, `보유 ×${have}`, 20, COLOR.dim, { ox: 1, strokeThickness: 0 }));
+        card.add(text(this, 110, y + 2, p.desc, 24, COLOR.text, { ox: 0, strokeThickness: 0, bold: false }));
+        card.add(button(this, W / 2, y + 58, 260, 58, '고르기', () => this.choosePerk(id), { fill: p.color, textColor: '#10151a', size: 26 }));
+        c.add(card);
+        appear(this, card, { duration: 260, delay: 80 + k * 90, dy: 20 });
+      });
+    });
+  }
+
+  choosePerk(id) {
+    if (!this.perkChoices) return;
+    this.perkChoices = null;
+    this.closeModal();
+    this.game_.addPerk(id);
+  }
+
+  // ── 엔딩: 비를 부르는 자를 쓰러뜨림 ──
+  ending(first) {
+    this.time.delayedCall(900, () => {
+      this.scene.pause('Game');
+      this.storyOpen = true;
+      storyPages(this, ENDING, () => {
+        this.storyOpen = false;
+        if (!this.modal && this.game_.phase !== 'over') this.scene.resume('Game');
+        this.banner(first ? '엔딩 보상 · 보유 코인 +1,000\n끝없는 밤이 이어져요' : '끝없는 밤이 이어져요');
+      });
     });
   }
 
@@ -221,9 +267,10 @@ export class UIScene extends Phaser.Scene {
     const counting = g.phase === 'break' && g.phaseLeft <= 3 && g.phaseLeft > 0 && !this.modal && !this.storyOpen;
     this.countText.setVisible(counting);
     if (counting) this.countText.setText(String(Math.ceil(g.phaseLeft)));
-    else if (g.phase === 'wave') this.statusText.setText(`남은 좀비 ${g.queue.length + g.zombies.length}`);
+    else if (g.phase === 'wave') this.statusText.setText(`남은 좀비 ${g.queue.length + g.zombies.length}${g.event ? ` · ${R.EVENTS[g.event].name}` : ''}`);
     else this.statusText.setText('');
     this.coinText.setText(R.formatNum(g.coins));
+    this.updateOpenPanels(g);
     this.coinIcon.x = 700 - this.coinText.width - 22;
     this.walletText.setText(`보유 ${R.formatNum(this.save.coins || 0)}`);
     this.walletIcon.x = 700 - this.walletText.width - 16;
@@ -237,7 +284,7 @@ export class UIScene extends Phaser.Scene {
       this.bossBar.fillRoundedRect(60, 170, W - 120, 24, 8);
       this.bossBar.fillStyle(0xb267ff, 1);
       if (bk > 0) this.bossBar.fillRoundedRect(60, 170, Math.max(16, (W - 120) * bk), 24, 8);
-      this.bossText.setText(`거대 좀비  ${Math.ceil(g.boss.hp)}`);
+      this.bossText.setText(`${g.boss.def.name}  ${R.formatNum(Math.ceil(g.boss.hp))}`);
     } else {
       this.bossText.setText('');
     }
@@ -343,10 +390,49 @@ export class UIScene extends Phaser.Scene {
     c.add([g, allyView(this, x, y + size * 0.1, id, size / 88)]);
   }
 
+  // 상점·아군 정보 창은 게임을 멈추지 않으므로, 코인이 바뀌면 버튼 색과 글자를 맞춘다
+  updateOpenPanels(g) {
+    if (!this.modal) return;
+    if (this.modal === this.shopModal) {
+      this.shopCoins.setText(this.shopHeader());
+      if (this.shopSignature() !== this.shopSig) this.refreshShop();
+      return;
+    }
+    const live = this.allyLive;
+    if (!live || this.modal !== live.c) return;
+    if (!g.cells[live.i]) return this.closeModal();
+    if (live.gaugeText) live.gaugeText.setText(live.gaugeLine());
+    if (live.upBtn && live.cost != null) {
+      const canUp = g.coins >= live.cost;
+      if (canUp !== live.canUp) {
+        live.canUp = canUp;
+        live.upBtn.setFill(canUp ? COLOR.green : 0x4a535c);
+        live.upBtn.label.setColor(canUp ? '#13200b' : '#aab3ba');
+      }
+    }
+  }
+
+  shopHeader() {
+    const g = this.game_;
+    const empty = g.cells.filter(x => !x).length;
+    return `코인 ${R.formatNum(g.coins)} · 빈 칸 ${empty}/9 · 기지 ${Math.ceil(g.baseHp)}/${g.baseMax}`;
+  }
+
+  // 지금 보이는 상점 목록에서 살 수 있는지가 바뀌었는지 알아보는 표시
+  shopSignature() {
+    const g = this.game_;
+    const empty = g.cells.filter(x => !x).length;
+    const all = ALLIES.filter(a => a.tier === this.shopTier);
+    const list = all.slice((this.shopPage || 0) * 5, (this.shopPage || 0) * 5 + 5);
+    return `${empty}|${list.map(a => (g.coins >= a.price ? 1 : 0)).join('')}`;
+  }
+
   // ── 상점 ──
   openShop(preferCell) {
     if (this.game_.phase === 'over') return;
-    const c = this.openModal();
+    // 상점을 보는 동안에도 전투는 계속된다(코인·버튼은 update에서 계속 새로 고침)
+    const c = this.openModal(false);
+    this.shopModal = c;
     this.shopPrefer = preferCell;
     if (preferCell >= 0) this.game_.select(preferCell);
     c.add(panel(this, W / 2, 668, 692, 1140));
@@ -363,7 +449,8 @@ export class UIScene extends Phaser.Scene {
   refreshShop() {
     const g = this.game_;
     const empty = g.cells.filter(x => !x).length;
-    this.shopCoins.setText(`코인 ${R.formatNum(g.coins)} · 빈 칸 ${empty}/9`);
+    this.shopCoins.setText(this.shopHeader());
+    this.shopSig = this.shopSignature();
     this.shopTabs.removeAll(true);
     TIERS.forEach((t, k) => {
       const x = W / 2 + (k - 2.5) * 108;
@@ -441,8 +528,10 @@ export class UIScene extends Phaser.Scene {
     const u = g.cells[i];
     if (!u) return;
     const a = ALLY[u.id];
-    const c = this.openModal();
+    // 강화하는 동안에도 전투는 계속된다
+    const c = this.openModal(false);
     c.dim.setFillStyle(0x000000, 0.25);
+    this.allyLive = { c, i };
     g.select(i);
     const top = 830;
     c.add(panel(this, W / 2, top + 210, 692, 420));
@@ -461,19 +550,26 @@ export class UIScene extends Phaser.Scene {
     // 영웅은 각성 게이지, 지휘관 강화는 같은 줄 뒤에 붙인다
     const buffStr = u.buff > 0 ? `공격 속도 +${Math.round(u.buff * 100)}%(지휘관)` : '';
     if (a.hero) {
-      const ready = (u.gauge || 0) >= 100;
-      const msg = u.awakeUntil > g.t ? '각성 중!' : ready ? '각성 준비 완료 · 닫고 영웅을 누르면 각성' : `각성 게이지 ${Math.floor(u.gauge || 0)}% · 웨이브 중에 차올라요`;
-      c.add(text(this, 40, top + 246, buffStr ? `${msg} · ${buffStr}` : msg, 19, '#ffd84a', { ox: 0, strokeThickness: 0, bold: false }));
+      const gaugeLine = () => {
+        const ready = (u.gauge || 0) >= 100;
+        const msg = u.awakeUntil > g.t ? '각성 중!' : ready ? '각성 준비 완료 · 닫고 영웅을 누르면 각성' : `각성 게이지 ${Math.floor(u.gauge || 0)}% · 웨이브 중에 차올라요`;
+        return buffStr ? `${msg} · ${buffStr}` : msg;
+      };
+      const gt = text(this, 40, top + 246, gaugeLine(), 19, '#ffd84a', { ox: 0, strokeThickness: 0, bold: false });
+      c.add(gt);
+      Object.assign(this.allyLive, { gaugeText: gt, gaugeLine });
     } else if (buffStr) {
       c.add(text(this, 40, top + 246, `지휘관 덕분에 ${buffStr.replace('(지휘관)', '')}`, 20, '#ffd84a', { ox: 0, strokeThickness: 0, bold: false }));
     }
     const by = top + 320;
     const canUp = cost != null && g.coins >= cost;
-    c.add(button(this, 150, by, 220, 84, cost == null ? '최대 레벨' : `강화 ${R.formatNum(cost)}`, () => {
+    const upBtn = button(this, 150, by, 220, 84, cost == null ? '최대 레벨' : `강화 ${R.formatNum(cost)}`, () => {
       const res = g.upgrade(i);
       this.toast(res.msg || '');
       if (res.ok) this.openAllyPanel(i);
-    }, { fill: canUp ? COLOR.green : 0x4a535c, textColor: canUp ? '#13200b' : '#aab3ba', size: 26 }));
+    }, { fill: canUp ? COLOR.green : 0x4a535c, textColor: canUp ? '#13200b' : '#aab3ba', size: 26 });
+    c.add(upBtn);
+    Object.assign(this.allyLive, { upBtn, cost, canUp });
     c.add(button(this, 370, by, 200, 84, '옮기기', () => {
       this.closeModal();
       g.startMove(i);
@@ -494,6 +590,9 @@ export class UIScene extends Phaser.Scene {
     c.add(panel(this, W / 2, H / 2, 620, 720));
     c.add(text(this, W / 2, H / 2 - 300, '일시정지', 44, COLOR.text));
     settingsRows(this, c, W / 2, H / 2 - 170, this.save, () => writeSave());
+    // 이번 판에 고른 보상 카드
+    const got = PERKS.filter(p => this.game_.perks[p.id]).map(p => `${p.name}${this.game_.perks[p.id] > 1 ? ` ×${this.game_.perks[p.id]}` : ''}`);
+    if (got.length) c.add(text(this, W / 2, H / 2 + 74, `받은 보상  ${got.join(' · ')}`, 20, '#ffd84a', { strokeThickness: 0, bold: false, wrap: 560 }));
     c.add(button(this, W / 2, H / 2 + 150, 400, 88, '계속하기', () => this.closeModal(), { size: 32 }));
     c.add(button(this, W / 2, H / 2 + 260, 400, 88, '처음 화면으로', () => this.toTitle(), { fill: 0x3a4652, textColor: '#eef3ea', size: 30 }));
   }

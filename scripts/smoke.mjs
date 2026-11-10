@@ -93,6 +93,12 @@ await page.evaluate(() => {
 await wait(5000);
 await shot('6-midwave');
 await wait(10000);
+// 거대 좀비 웨이브를 막아 보상 카드가 떠 있으면 첫 장을 고른다
+await page.evaluate(() => {
+  const ui = window.__game.scene.getScene('UI');
+  if (ui.perkChoices) ui.choosePerk(ui.perkChoices[0]);
+});
+await wait(300);
 const state = await page.evaluate(() => {
   const g = window.__game.scene.getScene('Game');
   return { wave: g.wave, phase: g.phase, alive: g.zombies.length, hp: Math.round(g.baseHp), kills: g.kills, boss: !!g.boss };

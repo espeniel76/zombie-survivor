@@ -1004,6 +1004,7 @@ export function drawPerson(ctx, x, y, s, o, part = 'all') {
   if (o.gun === 'flame') { rr(ctx, -27, -36, 11, 22, 4); fillStroke(ctx, '#e2701f'); }
   if (o.hero && o.outfit) heroOutfit(ctx, o.hero, 'back');
   if (o.hero) heroDeco(ctx, o.hero, 'back', o.outfit);
+  if (o.zombie && o.deco) zombieDeco(ctx, o.deco, 'back');
   const body = o.zombie ? o.skin : o.shirt;
   const edge = shade(body, -0.6);
   // 작은 발 두 개
@@ -1032,6 +1033,7 @@ export function drawPerson(ctx, x, y, s, o, part = 'all') {
     ctx.fillStyle = o.shirt;
     ctx.beginPath(); ctx.moveTo(-R, BY + 8); ctx.lineTo(-6, BY + 5); ctx.lineTo(0, BY + 10); ctx.lineTo(7, BY + 5); ctx.lineTo(R, BY + 8); ctx.lineTo(R, 0); ctx.lineTo(-R, 0); ctx.fill();
     ctx.restore();
+    if (o.deco) zombieDeco(ctx, o.deco, 'mid');
   }
   if (o.hero && o.outfit) heroOutfit(ctx, o.hero, 'body');
   if (o.hero) heroDeco(ctx, o.hero, 'mid', o.outfit);
@@ -1097,7 +1099,83 @@ export const ZOMBIE_LOOK = {
   brute: { shirt: '#6a5a8a', skin: '#86a672', pants: '#3a3a44', s: 1.5 },
   spitter: { shirt: '#6d7a3a', skin: '#b4c95a', pants: '#3a3a44', s: 1 },
   boss: { shirt: '#3f4a5c', skin: '#7d9a68', pants: '#2a2a34', s: 2.4 },
+  // 20웨이브부터
+  armored: { shirt: '#4a525c', skin: '#8aa478', pants: '#3a3a44', s: 1.1, deco: 'helmet' },
+  splitter: { shirt: '#3e3358', skin: '#a68bc4', pants: '#3a3a44', s: 1.05, deco: 'seam' },
+  splitling: { shirt: '#3e3358', skin: '#b9a2d4', pants: '#3a3a44', s: 0.8 },
+  healer: { shirt: '#d8dccf', skin: '#8fd2b8', pants: '#3a3a44', s: 1, deco: 'halo' },
+  charger: { shirt: '#7a3a2a', skin: '#8f9e6a', pants: '#2a2a34', s: 2.3, deco: 'horns' },
+  gravedigger: { shirt: '#2e2a38', skin: '#7f9a7a', pants: '#2a2a34', s: 2.3, deco: 'hood' },
+  ironclad: { shirt: '#3a4048', skin: '#7d9468', pants: '#2a2a34', s: 2.4, deco: 'knight' },
+  rainlord: { shirt: '#17151f', skin: '#56685e', pants: '#17151f', s: 2.8, deco: 'rainlord' },
 };
+
+// 새 좀비·거대 좀비의 꾸밈(몸 중심 (0, BY), 반지름 R 기준). layer: 'back'(몸 뒤) | 'mid'(몸 위, 눈 아래)
+function zombieDeco(ctx, d, layer) {
+  const top = BY - R;
+  if (layer === 'back') {
+    if (d === 'hood') { // 무덤지기: 몸 뒤로 늘어진 두건
+      ctx.beginPath(); ctx.ellipse(0, BY - 5, R + 3.5, R + 6, 0, 0, Math.PI * 2); fillStroke(ctx, '#2a2634', 2.2);
+    }
+    if (d === 'rainlord') { // 비를 부르는 자: 등 뒤의 검은 망토
+      ctx.beginPath(); ctx.moveTo(-R + 2, BY - 14);
+      ctx.quadraticCurveTo(-R - 12, BY + 6, -R - 6, 1); ctx.lineTo(-12, -2); ctx.lineTo(-4, 2); ctx.lineTo(4, -2); ctx.lineTo(12, 2); ctx.lineTo(R + 6, 1);
+      ctx.quadraticCurveTo(R + 12, BY + 6, R - 2, BY - 14); ctx.closePath();
+      fillStroke(ctx, '#1a1724', 2.2, '#000000');
+    }
+    return;
+  }
+  if (d === 'helmet') { // 철갑 좀비: 쇠 투구 + 가슴판
+    ctx.beginPath(); ctx.arc(0, BY, R + 1.5, Math.PI * 1.1, Math.PI * 1.9); ctx.lineTo(R * 0.95, BY - 10); ctx.lineTo(-R * 0.95, BY - 10); ctx.closePath();
+    fillStroke(ctx, '#8d99a6', 2.2, '#3e464f');
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.ellipse(-7, top + 5, 5, 2, -0.4, 0, Math.PI * 2); ctx.fill();
+    rr(ctx, -11, BY + 5, 22, 12, 4); fillStroke(ctx, '#7f8b98', 2, '#3e464f');
+    ctx.fillStyle = '#c9d2dc'; for (const x of [-6, 6]) { ctx.beginPath(); ctx.arc(x, BY + 11, 1.5, 0, Math.PI * 2); ctx.fill(); }
+  }
+  if (d === 'seam') { // 분열 좀비: 몸 가운데 갈라진 금
+    ctx.save(); ctx.beginPath(); ctx.arc(0, BY, R - 1, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = 'rgba(70,40,110,0.28)'; ctx.fillRect(1, top, R, R * 2);
+    ctx.strokeStyle = '#3a2556'; ctx.lineWidth = 2.4; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(1, top); for (let k = 1; k <= 7; k++) ctx.lineTo(k % 2 ? -2.5 : 3, top + k * 6); ctx.stroke();
+    ctx.restore();
+  }
+  if (d === 'halo') { // 치유 좀비: 머리 위 옅은 초록 고리
+    ctx.lineWidth = 3.2; ctx.strokeStyle = '#9cffc0';
+    ctx.beginPath(); ctx.ellipse(0, top - 7, 12, 4, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 1.2; ctx.strokeStyle = '#3c7a5a';
+    ctx.beginPath(); ctx.ellipse(0, top - 7, 14, 5.5, 0, 0, Math.PI * 2); ctx.stroke();
+  }
+  if (d === 'horns') { // 돌진 거인: 굽은 뿔 투구
+    ctx.beginPath(); ctx.arc(0, BY, R + 1, Math.PI * 1.15, Math.PI * 1.85); ctx.lineTo(R * 0.9, BY - 11); ctx.lineTo(-R * 0.9, BY - 11); ctx.closePath();
+    fillStroke(ctx, '#6a4a3a', 2.2);
+    for (const sx of [-1, 1]) {
+      ctx.beginPath(); ctx.moveTo(sx * 14, top + 6); ctx.quadraticCurveTo(sx * 30, top - 2, sx * 26, top - 16); ctx.quadraticCurveTo(sx * 22, top - 4, sx * 8, top + 9); ctx.closePath();
+      fillStroke(ctx, '#e8dcc0', 2, '#7a6a4a');
+    }
+  }
+  if (d === 'hood') { // 무덤지기: 두건 앞자락 + 손에 든 등불
+    ctx.beginPath(); ctx.arc(0, BY, R + 3, Math.PI * 1.02, Math.PI * 1.98); ctx.arc(0, BY - 2, R - 6, Math.PI * 1.92, Math.PI * 1.08, true); ctx.closePath();
+    fillStroke(ctx, '#3a3446', 2.2);
+    ctx.strokeStyle = '#5a5464'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(30, BY + 4); ctx.lineTo(30, BY + 10); ctx.stroke();
+    rr(ctx, 25, BY + 10, 10, 12, 3); fillStroke(ctx, '#ffd27a', 1.8, '#7a5a2a');
+  }
+  if (d === 'knight') { // 철갑 거인: 기사 투구 + 어깨 갑옷(눈은 틈 사이로 보인다)
+    for (const sx of [-1, 1]) { ctx.beginPath(); ctx.ellipse(sx * (R - 2), BY + 2, 9, 7, 0, 0, Math.PI * 2); fillStroke(ctx, '#7a8592', 2, '#363d45'); }
+    ctx.beginPath(); ctx.arc(0, BY, R + 1.5, Math.PI * 1.02, Math.PI * 1.98); ctx.lineTo(R, BY - 9); ctx.lineTo(-R, BY - 9); ctx.closePath();
+    fillStroke(ctx, '#8a95a2', 2.2, '#363d45');
+    ctx.strokeStyle = '#363d45'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, top + 1); ctx.lineTo(0, BY - 10); ctx.stroke();
+    ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.moveTo(-3, top - 1); ctx.quadraticCurveTo(0, top - 14, 6, top - 12); ctx.quadraticCurveTo(2, top - 6, 3, top); ctx.fill();
+  }
+  if (d === 'rainlord') { // 비를 부르는 자: 검은 왕관 + 머리 위 비구름
+    ctx.beginPath(); ctx.moveTo(-13, top + 5); ctx.lineTo(-14, top - 7); ctx.lineTo(-7, top - 1); ctx.lineTo(0, top - 11); ctx.lineTo(7, top - 1); ctx.lineTo(14, top - 7); ctx.lineTo(13, top + 5); ctx.closePath();
+    fillStroke(ctx, '#1e1b28', 2, '#000000');
+    ctx.fillStyle = '#8a6cff'; ctx.beginPath(); ctx.arc(0, top - 1, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#3a3f4a';
+    for (const [cx, cy, cr] of [[-9, top - 22, 7], [0, top - 26, 9], [10, top - 22, 7]]) { ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2); ctx.fill(); }
+    ctx.strokeStyle = 'rgba(120,135,160,0.8)'; ctx.lineWidth = 1.4;
+    for (const x of [-10, -3, 4, 11]) { ctx.beginPath(); ctx.moveTo(x, top - 15); ctx.lineTo(x - 2, top - 9); ctx.stroke(); }
+  }
+}
 
 // 무기 + 손만. (x, y) = 손(회전 중심), 오른쪽을 향함.
 export function drawWeapon(ctx, x, y, s, o) {

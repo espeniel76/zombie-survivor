@@ -4,7 +4,11 @@ import { drawPerson, drawWeapon, allyLook, ZOMBIE_LOOK, BY, HAND } from './blob.
 
 export const ALLY_SCALE = 1.45;
 // 좀비 그림 크기. 맞는 범위(zombies.js radius)는 그림 반지름의 약 75%.
-export const ZOMBIE_SCALE = { walker: 1.3, runner: 1.15, brute: 1.9, spitter: 1.3, boss: 3.0 };
+export const ZOMBIE_SCALE = {
+  walker: 1.3, runner: 1.15, brute: 1.9, spitter: 1.3, boss: 3.0,
+  armored: 1.4, splitter: 1.35, splitling: 1.0, healer: 1.3,
+  charger: 2.9, gravedigger: 2.9, ironclad: 3.05, rainlord: 3.7,
+};
 
 // 몸 텍스처의 그림 상자(그림 단위). 빛, 모자, 연료통까지 들어가게.
 const BOX = { l: 46, r: 46, t: 84, b: 16 };

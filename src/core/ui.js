@@ -21,6 +21,13 @@ export const COLOR = {
   orangeText: '#ffb347',
 };
 
+// 받침이 있으면 a(이/을), 없으면 b(가/를)
+export function josa(word, a, b) {
+  const c = word.charCodeAt(word.length - 1);
+  const has = c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0;
+  return word + (has ? a : b);
+}
+
 export function text(scene, x, y, str, size = 28, color = COLOR.text, opts = {}) {
   return scene.add
     .text(x, y, str, {

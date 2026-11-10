@@ -13,7 +13,11 @@ export const MAX_ALIVE = 160;
 // 좀비를 잡으면 코인을 떨어뜨리고, 주운 코인(보유 코인)은 판이 끝나도 남는다.
 // 신화는 메인 화면 상점에서 보유 코인으로 한 번 해금해야 전장 상점에 나온다.
 export const MYTHIC_UNLOCK = 2000;
-const DROP = { walker: 1, runner: 1, spitter: 2, brute: 4, boss: 30 };
+const DROP = {
+  walker: 1, runner: 1, spitter: 2, brute: 4, boss: 30,
+  armored: 3, splitter: 2, splitling: 0, healer: 3,
+  charger: 35, gravedigger: 35, ironclad: 40, rainlord: 500,
+};
 export function dropCoins(kind) {
   return DROP[kind] ?? 1;
 }
@@ -95,8 +99,9 @@ export function allyStats(id, lv, rateBuff = 0) {
 }
 
 // ── 웨이브 ──
+// 30웨이브까지는 그대로, 그 뒤로는 체력이 덜 가파르게 오른다(대신 새 좀비·이변·보스로 어려워진다)
 export function hpMul(w) {
-  return (1 + 0.16 * (w - 1)) * Math.pow(1.035, w - 1);
+  return (1 + 0.16 * (w - 1)) * Math.pow(1.035, Math.min(w, 30) - 1) * Math.pow(1.015, Math.max(0, w - 30));
 }
 
 export function damageMul(w) {
@@ -113,13 +118,19 @@ export function waveWeights(w) {
     runner: w >= 3 ? Math.min(0.6, 0.15 + (w - 3) * 0.05) : 0,
     brute: w >= 6 ? Math.min(0.3, 0.06 + (w - 6) * 0.02) : 0,
     spitter: w >= 8 ? 0.15 : 0,
+    // 20웨이브가 넘으면 능력 있는 좀비가 섞인다
+    armored: w >= 20 ? Math.min(0.3, 0.1 + (w - 20) * 0.01) : 0,
+    splitter: w >= 25 ? Math.min(0.25, 0.1 + (w - 25) * 0.01) : 0,
+    healer: w >= 30 ? 0.08 : 0,
   };
 }
 
 export function waveSpec(w) {
-  const base = 8 + 3 * (w - 1);
+  // 20웨이브까지는 3마리씩, 그 뒤로는 1마리씩만 늘린다(웨이브가 너무 길어지면 지루하다)
+  const base = w <= 20 ? 8 + 3 * (w - 1) : 65 + (w - 20);
   return {
-    count: isBossWave(w) ? Math.round(base * 0.6) : base,
+    // 보스 웨이브는 좀비를 줄이고, 마지막 보스 웨이브는 보스가 불러내니 더 줄인다
+    count: w === FINAL_WAVE ? Math.round(base * 0.3) : isBossWave(w) ? Math.round(base * 0.6) : base,
     interval: Math.max(0.22, 1.1 - w * 0.03),
     boss: isBossWave(w),
   };
@@ -139,6 +150,32 @@ export function pickZombie(w, rng = Math.random) {
 
 export function zombieHp(kind, w) {
   return Math.round(ZOMBIES[kind].hp * hpMul(w));
+}
+
+// ── 거대 좀비 차례 ──
+// 5·10·15는 거대 좀비, 20부터 돌진 거인 → 무덤지기 → 철갑 거인 → 거대 좀비 순서로 돈다. 50은 마지막 보스.
+export const FINAL_WAVE = 50;
+const BOSS_CYCLE = ['charger', 'gravedigger', 'ironclad', 'boss'];
+export function bossKind(w) {
+  if (w === FINAL_WAVE) return 'rainlord';
+  if (w < 20) return 'boss';
+  return BOSS_CYCLE[(w / BOSS_EVERY - 4) % BOSS_CYCLE.length];
+}
+
+// ── 웨이브 이변(31웨이브부터, 마지막 보스 웨이브 빼고) ──
+// 화면은 밝기만 천천히 바뀐다(번쩍임 없음)
+export const EVENTS = {
+  fog: { name: '안개', desc: '아군 사거리 -25%', range: 0.75 },
+  storm: { name: '폭우', desc: '좀비가 25% 빨라요', zSpeed: 1.25 },
+  gold: { name: '황금 웨이브', desc: '처치 코인 2배', coin: 2 },
+  horde: { name: '대군', desc: '좀비 1.5배 · 체력 -30%', count: 1.5, hp: 0.7 },
+  giants: { name: '거인의 밤', desc: '좀비 절반 · 체력 2배', count: 0.5, hp: 2, size: 1.2 },
+  redmoon: { name: '붉은 달', desc: '좀비 공격력 +40% · 코인 +50%', zDmg: 1.4, coin: 1.5 },
+};
+export function waveEvent(w, prev = null, rng = Math.random) {
+  if (w <= 30 || isBossWave(w)) return null; // 보스 웨이브는 보스가 곧 이변
+  const keys = Object.keys(EVENTS).filter(k => k !== prev);
+  return keys[Math.floor(rng() * keys.length)];
 }
 
 export function zombieReward(kind, w) {

@@ -17,6 +17,8 @@ for (let s = 0; s < SECONDS; s++) {
     const g = window.__game.scene.getScene('Game');
     if (!g || g.phase === 'over') return { over: true, wave: g?.wave, kills: g?.kills };
     g.setSpeed(3);
+    const ui = window.__game.scene.getScene('UI');
+    if (ui.perkChoices) ui.choosePerk(ui.perkChoices[0]); // 보상 카드는 첫 장
     const allies = window.__allies;
     const R = window.__rules;
     const attackers = allies.filter(a => !['repair', 'money', 'buff'].includes(a.kind) && R.isUnlocked(g.save, a.id));
