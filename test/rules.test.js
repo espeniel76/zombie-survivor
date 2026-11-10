@@ -4,7 +4,7 @@ import {
   neighbors, upgradeCost, sellPrice, rateBuffAt, allyStats, hpMul, waveSpec, pickZombie,
   zombieHp, isBossWave, dropCoins, isUnlocked, unlockMythic, MYTHIC_UNLOCK,
 } from '../src/core/rules.js';
-import { ALLIES, ALLY, TIERS } from '../src/data/allies.js';
+import { ALLIES, ALLY, TIERS, MAX_ALLY_LEVEL } from '../src/data/allies.js';
 
 describe('3×3 칸', () => {
   it('가운데 칸은 상하좌우 4칸과 붙어 있다', () => {
@@ -42,7 +42,13 @@ describe('강화와 판매', () => {
   it('강화 비용은 레벨마다 오르고 최대 레벨이면 없다', () => {
     expect(upgradeCost('guard', 1)).toBe(30);
     expect(upgradeCost('guard', 2)).toBe(60);
-    expect(upgradeCost('guard', 5)).toBeNull();
+    expect(upgradeCost('guard', 9)).toBe(270);
+    expect(upgradeCost('guard', 10)).toBeNull();
+  });
+  it('Lv10 영웅 수치는 정해진 한도를 넘지 않는다', () => {
+    expect(allyStats('echo', 10).power).toBe(1.5);
+    expect(allyStats('timethief', 10).slowAll).toBe(0.4);
+    expect(allyStats('executioner', 10).threshold).toBe(0.5);
   });
   it('판매하면 쓴 돈의 절반을 돌려준다', () => {
     expect(sellPrice('guard', 1)).toBe(25);
@@ -53,7 +59,7 @@ describe('강화와 판매', () => {
   });
   it('피해·독·수리 수치는 모든 레벨에서 1 이상의 정수', () => {
     for (const a of ALLIES) {
-      for (let lv = 1; lv <= 5; lv++) {
+      for (let lv = 1; lv <= MAX_ALLY_LEVEL; lv++) {
         const s = allyStats(a.id, lv);
         for (const k of ['dmg', 'poison', 'hps']) {
           if (s[k] === undefined) continue;
@@ -89,6 +95,7 @@ describe('각성', () => {
     expect(up.rate).toBeCloseTo(base.rate * 2);
     expect(up.radius).toBeGreaterThan(base.radius);
     expect(awakenStats(allyStats('echo', 1)).power).toBe(1);
+    expect(awakenStats(allyStats('echo', 10)).power).toBe(1.5); // Lv10 메아리는 각성해도 약해지지 않는다
     expect(awakenStats(allyStats('executioner', 5)).threshold).toBeLessThanOrEqual(0.6);
   });
 });

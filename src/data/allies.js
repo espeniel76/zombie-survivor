@@ -99,4 +99,4 @@ for (const a of ALLIES) {
 }
 
 export const ALLY = Object.fromEntries(ALLIES.map(a => [a.id, a]));
-export const MAX_ALLY_LEVEL = 5;
+export const MAX_ALLY_LEVEL = 10;

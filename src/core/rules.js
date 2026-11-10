@@ -86,9 +86,9 @@ export function allyStats(id, lv, rateBuff = 0) {
   if (s.burst) s.burst = Math.round(s.burst * m);
   if (s.threshold) s.threshold = Math.min(0.5, Math.round((s.threshold + 0.03 * (lv - 1)) * 100) / 100); // 처형 기준
   // 영웅 전용 수치
-  if (s.power) s.power = Math.min(1, Math.round((s.power + 0.1 * (lv - 1)) * 100) / 100); // 메아리 위력
+  if (s.power) s.power = Math.min(1.5, Math.round((s.power + 0.1 * (lv - 1)) * 100) / 100); // 메아리 위력(Lv5 100%, Lv10 150%)
   if (s.max) s.max += lv - 1; // 벌 최대 수, 가시밭 최대 수
-  if (s.slowAll) s.slowAll = Math.round((s.slowAll + 0.03 * (lv - 1)) * 100) / 100; // 시간 도둑: 모든 좀비 느리게
+  if (s.slowAll) s.slowAll = Math.min(0.4, Math.round((s.slowAll + 0.03 * (lv - 1)) * 100) / 100); // 시간 도둑: 모든 좀비 느리게(최대 40%)
   if (s.rateBuff) s.rateBuff = s.rateBuff * (1 + 0.25 * (lv - 1));
   if (s.rate) s.rate = s.rate * (1 + rateBuff);
   return s;
@@ -171,7 +171,7 @@ export function awakenStats(st) {
   if (s.width) s.width *= 1.5;
   if (s.count) s.count += 1;
   if (s.max) s.max += 2;
-  if (s.power) s.power = 1;
+  if (s.power) s.power = Math.max(1, s.power); // Lv6 이상 메아리술사는 이미 100%가 넘으니 깎지 않는다
   if (s.threshold) s.threshold = Math.min(0.6, s.threshold + 0.15);
   if (s.guard) s.guard = Math.min(0.6, s.guard + 0.2);
   if (s.time) s.time = Math.round(s.time * 1.3 * 10) / 10;
