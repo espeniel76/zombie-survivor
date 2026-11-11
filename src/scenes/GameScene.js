@@ -4,7 +4,7 @@ import Phaser from 'phaser';
 import { ALLY } from '../data/allies.js';
 import { ZOMBIES } from '../data/zombies.js';
 import * as R from '../core/rules.js';
-import { loadSave, writeSave } from '../core/save.js';
+import { loadSave, writeSave, TEST } from '../core/save.js';
 import { sfx } from '../core/sfx.js';
 import { W, H, FONT, josa } from '../core/ui.js';
 import { TIERS } from '../data/allies.js';
@@ -92,6 +92,13 @@ export class GameScene extends Phaser.Scene {
     this.phase = 'break';
     this.phaseLeft = R.FIRST_BREAK;
     this.coins = this.preview ? 0 : this.map.startCoins;
+    // 테스트판: 고른 웨이브부터, 전장 코인 100만
+    this.test = TEST && !this.preview;
+    if (this.test) {
+      this.coins = 1000000;
+      this.wave = Math.max(0, (data?.startWave || 1) - 1);
+      this.phaseLeft = 5;
+    }
     this.baseMax = R.BASE_HP;
     this.baseHp = R.BASE_HP;
     this.kills = 0;
@@ -392,6 +399,28 @@ export class GameScene extends Phaser.Scene {
 
   allyName(i) {
     return this.cells[i] ? ALLY[this.cells[i].id].name : '';
+  }
+
+  // 테스트판: 지금 좀비를 모두 치우고 다음 거대 좀비 웨이브로
+  jumpToBoss() {
+    for (const z of this.zombies) {
+      if (z.dead) continue;
+      z.dead = true;
+      z.setVisible(false).setActive(false);
+      this.foes.removed(z);
+      this.zPool.push(z);
+    }
+    this.zombies = [];
+    this.queue = [];
+    this.boss = null;
+    for (const sp of this.spits) sp.img.destroy();
+    this.spits = [];
+    this.wave = Math.ceil((this.wave + 1) / R.BOSS_EVERY) * R.BOSS_EVERY - 1;
+    this.event = null;
+    this.updateMods();
+    this.foes.applyEvent(null);
+    this.phase = 'break';
+    this.phaseLeft = 0.5;
   }
 
   // 보상 카드 + 이번 웨이브 이변을 합친 배율

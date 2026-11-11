@@ -2,7 +2,7 @@
 import Phaser from 'phaser';
 import { ALLIES, ALLY, TIERS, MAX_ALLY_LEVEL } from '../data/allies.js';
 import * as R from '../core/rules.js';
-import { loadSave, writeSave } from '../core/save.js';
+import { loadSave, writeSave, TEST } from '../core/save.js';
 import { sfx } from '../core/sfx.js';
 import { W, H, COLOR, text, panel, button, settingsRows, appear, vanish, curtainIn, curtainOut } from '../core/ui.js';
 import { allyView } from '../render/sprites.js';
@@ -213,6 +213,11 @@ export class UIScene extends Phaser.Scene {
     button(this, 140, y, 230, 92, '상점', () => this.openShop(-1), { size: 36 });
     this.skipBtn = button(this, 370, y, 210, 92, '바로 시작', () => this.game_.skipBreak(), { fill: COLOR.orange, size: 30, textColor: '#2a1600' });
     this.speedBtn = button(this, 540, y, 110, 92, '1배속', () => this.cycleSpeed(), { fill: 0x3a4652, textColor: '#eef3ea', size: 24 });
+    // 테스트판: 웨이브 중에는 '바로 시작' 자리에 '다음 보스로'
+    if (TEST) {
+      this.bossBtn = button(this, 370, y, 210, 92, '다음 보스로', () => this.game_.jumpToBoss(), { fill: 0x8a5cff, size: 26, textColor: '#ffffff' });
+      text(this, W / 2, 210, '테스트판 · 기록은 따로 저장돼요', 20, '#c9b8ff', { strokeThickness: 4 }).setDepth(40);
+    }
     button(this, 650, y, 90, 92, 'II', () => this.openPause(), { fill: 0x3a4652, textColor: '#eef3ea', size: 30 });
   }
 
@@ -291,6 +296,7 @@ export class UIScene extends Phaser.Scene {
     this.walletText.setText(`보유 ${R.formatNum(this.save.coins || 0)}`);
     this.walletIcon.x = 700 - this.walletText.width - 16;
     this.skipBtn.setVisible(g.phase === 'break');
+    this.bossBtn?.setVisible(g.phase === 'wave');
     this.updateHpBar(g);
 
     this.bossBar.clear();

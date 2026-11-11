@@ -2,7 +2,7 @@
 import Phaser from 'phaser';
 import { ALLIES, TIERS } from '../data/allies.js';
 import * as R from '../core/rules.js';
-import { loadSave, writeSave } from '../core/save.js';
+import { loadSave, writeSave, TEST } from '../core/save.js';
 import { unlockAudio } from '../core/sfx.js';
 import { W, H, COLOR, text, panel, button, settingsRows, appear, vanish, curtainIn, curtainOut } from '../core/ui.js';
 import { statsLine } from './UIScene.js';
@@ -99,7 +99,8 @@ export class TitleScene extends Phaser.Scene {
     // 큰 버튼은 '게임 시작' 하나만. 나머지는 아래 작은 버튼 한 줄
     // 두 번째 맵이 열렸으면 '게임 시작'에서 맵을 고른다
     const map2 = R.mapUnlocked(this.save, 'mall');
-    c.add(button(this, W / 2, 720, 460, 116, '게임 시작', () => (map2 ? this.showMaps() : this.go('Game', { preview: null, map: 'field' })), { size: 46 }));
+    if (TEST) c.add(text(this, W / 2, 560, '테스트판', 40, '#c9b8ff', { strokeThickness: 8 }));
+    c.add(button(this, W / 2, 720, 460, 116, '게임 시작', () => (TEST ? this.showTest() : map2 ? this.showMaps() : this.go('Game', { preview: null, map: 'field' })), { size: 46 }));
     if (!map2) c.add(text(this, W / 2, 810, `${R.MAP2_WAVE}웨이브에 도달하면 두 번째 맵이 열려요`, 20, COLOR.dim, { strokeThickness: 4, bold: false }));
     // 보유 코인(오른쪽 위)
     const wallet = text(this, 696, 54, R.formatNum(this.save.coins || 0), 32, '#ffe08a', { ox: 1 });
@@ -115,6 +116,32 @@ export class TitleScene extends Phaser.Scene {
     const x0 = W / 2 - ((bw + gap) * (small.length - 1)) / 2;
     small.forEach(([label, fn, color], k) =>
       c.add(button(this, x0 + k * (bw + gap), 1150, bw, 72, label, fn, { fill: 0x26303a, textColor: color, size: 24 })));
+  }
+
+  // 테스트판: 맵과 시작 웨이브를 고른다(전장 코인 100만, 신화·맵 모두 열림)
+  showTest(map = 'field') {
+    this.clear();
+    const c = this.main;
+    c.add(panel(this, W / 2, H / 2, 692, 1100));
+    c.add(text(this, W / 2, 150, '테스트판', 44, '#c9b8ff'));
+    c.add(text(this, W / 2, 200, '전장 코인 100만 · 신화와 두 번째 맵 모두 열림 · 원래 기록과 따로 저장', 19, COLOR.dim, { strokeThickness: 0, bold: false }));
+    c.add(text(this, W / 2, 270, '맵', 30, COLOR.text));
+    ['field', 'mall'].forEach((id, k) => {
+      const on = id === map;
+      c.add(button(this, W / 2 + (k - 0.5) * 300, 340, 280, 76, R.MAPS[id].name, () => this.showTest(id),
+        { fill: on ? COLOR.green : 0x2b3540, textColor: on ? '#13200b' : '#eef3ea', size: 26 }));
+    });
+    c.add(text(this, W / 2, 450, '시작 웨이브 (5의 배수는 거대 좀비)', 30, COLOR.text));
+    const waves = [1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 49, 50];
+    waves.forEach((w, k) => {
+      const x = W / 2 + ((k % 4) - 1.5) * 150;
+      const y = 540 + Math.floor(k / 4) * 110;
+      const boss = w % 5 === 0;
+      c.add(button(this, x, y, 136, 90, `${w}`, () => this.go('Game', { preview: null, map, startWave: w }),
+        { fill: boss ? 0x8a5cff : 0x3a4652, textColor: '#ffffff', size: 34 }));
+    });
+    c.add(text(this, W / 2, 880, '게임 중에는 아래 \'다음 보스로\' 버튼으로 다음 거대 좀비까지 건너뛸 수 있어요', 19, COLOR.dim, { strokeThickness: 0, bold: false, wrap: 600 }));
+    c.add(button(this, W / 2, 1120, 300, 80, '뒤로', () => this.showMain(), { fill: 0x3a4652, textColor: '#eef3ea' }));
   }
 
   // 맵 고르기(두 번째 맵이 열린 뒤)

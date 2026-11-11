@@ -1,5 +1,9 @@
 // 브라우저 저장소. 막혀 있어도 게임은 돌아가야 한다.
-const KEY = 'zombie-survivor-save-v1';
+import { ALLIES } from '../data/allies.js';
+
+// 테스트판: 주소 끝에 ?test 를 붙이면 열린다. 원래 저장과 따로 저장하고, 신화·두 번째 맵을 모두 열어 둔다.
+export const TEST = typeof location !== 'undefined' && new URLSearchParams(location.search).has('test');
+const KEY = TEST ? 'zombie-survivor-test-v1' : 'zombie-survivor-save-v1';
 
 const DEFAULTS = () => ({
   coins: 0,
@@ -31,6 +35,12 @@ export function loadSave() {
     }
   } catch {
     // 저장소를 못 쓰면 기본값으로
+  }
+  if (TEST) {
+    data.meta.unlocked = ALLIES.filter(a => a.tier === 5).map(a => a.id);
+    data.meta.map2 = true;
+    data.story.prologue = true;
+    data.coins = Math.max(data.coins || 0, 99999);
   }
   cache = data;
   return cache;
