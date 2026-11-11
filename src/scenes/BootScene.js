@@ -323,6 +323,144 @@ export class BootScene extends Phaser.Scene {
     });
   }
 
+  // 맵 바닥(화면 한 장 크기). 기지는 가운데(360, 650)에 놓인다.
+  drawMaps() {
+    const CX = 360;
+    const CY = 650;
+    // 1번째 맵: 텅 빈 사거리 — 기지가 네 길이 만나는 곳 한가운데
+    const r = rng(21);
+    this.make_('map_road', 720, 1280, (g) => {
+      const RW = 170;
+      g.fillStyle(0x4d5258, 1); // 보도
+      g.fillRect(0, 0, 720, 1280);
+      g.lineStyle(2, 0x43484e, 1);
+      for (let y = 0; y < 1280; y += 44) g.lineBetween(0, y, 720, y);
+      for (let x = 0; x < 720; x += 44) g.lineBetween(x, 0, x, 1280);
+      g.fillStyle(0x2c3036, 1); // 차도
+      g.fillRect(CX - RW, 0, RW * 2, 1280);
+      g.fillRect(0, CY - RW, 720, RW * 2);
+      for (let i = 0; i < 40; i++) { // 아스팔트 얼룩
+        g.fillStyle(r() < 0.5 ? 0x272b30 : 0x31353b, 0.8);
+        const onV = r() < 0.5;
+        const x = onV ? CX - RW + r() * RW * 2 : r() * 720;
+        const y = onV ? r() * 1280 : CY - RW + r() * RW * 2;
+        g.fillEllipse(x, y, 20 + r() * 50, 10 + r() * 24);
+      }
+      g.lineStyle(6, 0x737980, 1); // 연석
+      for (const x of [CX - RW, CX + RW]) { g.lineBetween(x, 0, x, CY - RW); g.lineBetween(x, CY + RW, x, 1280); }
+      for (const y of [CY - RW, CY + RW]) { g.lineBetween(0, y, CX - RW, y); g.lineBetween(CX + RW, y, 720, y); }
+      const STOP = RW + 80;
+      g.lineStyle(3, 0xd8b23a, 0.85); // 노란 중앙선(겹선)
+      for (const d of [-4, 4]) {
+        g.lineBetween(CX + d, 0, CX + d, CY - STOP); g.lineBetween(CX + d, CY + STOP, CX + d, 1280);
+        g.lineBetween(0, CY + d, CX - STOP, CY + d); g.lineBetween(CX + STOP, CY + d, 720, CY + d);
+      }
+      g.fillStyle(0xdfe3e6, 0.7); // 흰 차선 점선
+      for (const x of [CX - RW / 2, CX + RW / 2]) {
+        for (let y = 0; y < 1280; y += 70) if (Math.abs(y + 15 - CY) > STOP) g.fillRect(x - 2, y, 4, 34);
+      }
+      for (const y of [CY - RW / 2, CY + RW / 2]) {
+        for (let x = 0; x < 720; x += 70) if (Math.abs(x + 15 - CX) > STOP) g.fillRect(x, y - 2, 34, 4);
+      }
+      g.fillStyle(0xe6e9ec, 0.75); // 횡단보도
+      for (let k = -RW + 14; k < RW - 14; k += 26) {
+        g.fillRect(CX + k, CY - RW - 70, 13, 52); g.fillRect(CX + k, CY + RW + 18, 13, 52);
+        g.fillRect(CX - RW - 70, CY + k, 52, 13); g.fillRect(CX + RW + 18, CY + k, 52, 13);
+      }
+      g.lineStyle(2, 0x1f2226, 0.9); // 갈라진 금
+      for (let i = 0; i < 14; i++) {
+        let x = r() * 720;
+        let y = r() * 1280;
+        for (let k = 0; k < 4; k++) { const nx = x + (r() - 0.5) * 40; const ny = y + (r() - 0.5) * 40; g.lineBetween(x, y, nx, ny); x = nx; y = ny; }
+      }
+      for (const [x, y] of [[CX - 110, CY - 330], [CX + 120, CY + 360]]) { // 맨홀
+        g.fillStyle(0x3b3f45, 1); g.fillCircle(x, y, 18);
+        g.lineStyle(2, 0x23262a, 1); g.strokeCircle(x, y, 18); g.strokeCircle(x, y, 11);
+      }
+    });
+    // 2번째 맵: 폐허 상점가 — 양옆으로 무너진 가게가 늘어선 보행자 거리
+    const m = rng(33);
+    this.make_('map_mall', 720, 1280, (g) => {
+      g.fillStyle(0x5c564f, 1); // 보도블록(벽돌 무늬)
+      g.fillRect(0, 0, 720, 1280);
+      for (let row = 0; row * 22 < 1280; row++) {
+        for (let x = (row % 2) * -22; x < 720; x += 44) {
+          g.fillStyle([0x645d55, 0x5a544d, 0x6a625a][Math.floor(m() * 3)], 1);
+          g.fillRect(x + 1, row * 22 + 1, 42, 20);
+        }
+      }
+      const SHOP = 112;
+      const AWN = 30;
+      const awnings = [[0xa8473a, 0xe8ddd0], [0x3a7a5a, 0xe8ddd0], [0x3a5a8a, 0xe8ddd0], [0xb8862a, 0xf0e6d0], [0x6a3a6a, 0xe8ddd0]];
+      for (const side of [0, 1]) {
+        const x0 = side ? 720 - SHOP : 0;
+        g.fillStyle(0x2a2c32, 1); // 가게 지붕
+        g.fillRect(x0, 0, SHOP, 1280);
+        for (let y = 0, k = 0; y < 1280; y += 170, k++) {
+          g.lineStyle(3, 0x1c1d22, 1);
+          g.lineBetween(x0, y, x0 + SHOP, y);
+          g.fillStyle(0x34363d, 1); // 옥상 환기구
+          g.fillRect(x0 + 24 + m() * 40, y + 30 + m() * 80, 26, 26);
+          const [c1, c2] = awnings[(k + side * 2) % awnings.length]; // 빛바랜 줄무늬 차양(군데군데 찢김)
+          const ax = side ? x0 - AWN : x0 + SHOP;
+          for (let s = 0; s < 150; s += 15) {
+            if (m() < 0.15) continue;
+            g.fillStyle((s / 15) % 2 ? c2 : c1, 0.78);
+            g.fillRect(ax, y + 10 + s, AWN, 15);
+          }
+        }
+      }
+      for (let i = 0; i < 60; i++) { // 깨진 유리·종이 쓰레기
+        const x = 150 + m() * 420;
+        const y = m() * 1280;
+        if (m() < 0.5) { g.fillStyle(0xbfd8e0, 0.5); g.fillTriangle(x, y, x + 6 + m() * 6, y + 2, x + 2, y + 7); }
+        else { g.fillStyle(0xd8d2c4, 0.55); g.fillRect(x, y, 8 + m() * 6, 6 + m() * 4); }
+      }
+      g.lineStyle(2, 0x3a3631, 0.9); // 갈라진 금
+      for (let i = 0; i < 16; i++) {
+        let x = 150 + m() * 420;
+        let y = m() * 1280;
+        for (let k = 0; k < 4; k++) { const nx = x + (m() - 0.5) * 44; const ny = y + (m() - 0.5) * 44; g.lineBetween(x, y, nx, ny); x = nx; y = ny; }
+      }
+    });
+    // 장식: 라바콘, 쇼핑 카트, 쓰러진 간판, 자판기, 쓰레기 봉투
+    this.make_('prop_cone', 34, 34, (g) => {
+      g.fillStyle(0x000000, 0.25); g.fillCircle(19, 19, 14);
+      g.fillStyle(0xf07a2a, 1); g.lineStyle(2, DARK, 1); g.fillCircle(17, 17, 13); g.strokeCircle(17, 17, 13);
+      g.lineStyle(3, 0xf2f2f2, 1); g.strokeCircle(17, 17, 7);
+      g.fillStyle(0xf07a2a, 1); g.fillCircle(17, 17, 3);
+    });
+    this.make_('prop_cart', 64, 48, (g) => {
+      g.fillStyle(0x000000, 0.22); g.fillRect(6, 8, 56, 38);
+      g.lineStyle(3, 0x9aa4ae, 1); g.strokeRect(4, 4, 46, 34);
+      g.lineStyle(1.5, 0x9aa4ae, 0.8);
+      for (let x = 12; x < 50; x += 8) g.lineBetween(x, 4, x, 38);
+      for (let y = 12; y < 38; y += 8) g.lineBetween(4, y, 50, y);
+      g.lineStyle(4, 0x3a7ac0, 1); g.lineBetween(56, 6, 56, 36); // 손잡이
+      g.lineStyle(2, 0x9aa4ae, 1); g.lineBetween(50, 8, 56, 8); g.lineBetween(50, 34, 56, 34);
+    });
+    this.make_('prop_sign', 110, 44, (g) => {
+      g.fillStyle(0x000000, 0.25); g.fillRect(6, 8, 102, 34);
+      g.fillStyle(0xc8b43a, 1); g.lineStyle(3, DARK, 1); g.fillRect(2, 2, 100, 32); g.strokeRect(2, 2, 100, 32);
+      g.fillStyle(0x3a3a3a, 0.75); // 지워진 글자 자리
+      for (const [x, w] of [[14, 14], [34, 18], [58, 12], [76, 16]]) g.fillRect(x, 11, w, 14);
+      g.fillStyle(0x8a7a2a, 0.6); g.fillTriangle(70, 2, 102, 2, 102, 22); // 깨진 모서리
+    });
+    this.make_('prop_vending', 50, 66, (g) => {
+      g.fillStyle(0x000000, 0.25); g.fillRect(6, 8, 44, 58);
+      g.fillStyle(0xb8323a, 1); g.lineStyle(3, DARK, 1); g.fillRect(2, 2, 42, 58); g.strokeRect(2, 2, 42, 58);
+      g.fillStyle(0x9ab8c8, 0.8); g.fillRect(8, 8, 30, 26);
+      g.fillStyle(0x2a2a30, 1); g.fillRect(8, 42, 30, 10);
+    });
+    this.make_('prop_bags', 60, 46, (g) => {
+      for (const [x, y, rad] of [[18, 26, 14], [36, 20, 13], [40, 32, 11]]) {
+        g.fillStyle(0x000000, 0.2); g.fillCircle(x + 3, y + 3, rad);
+        g.fillStyle(0x23252b, 1); g.lineStyle(2, 0x111216, 1); g.fillCircle(x, y, rad); g.strokeCircle(x, y, rad);
+        g.fillStyle(0xffffff, 0.12); g.fillCircle(x - rad * 0.35, y - rad * 0.35, rad * 0.3);
+      }
+    });
+  }
+
   drawGround() {
     const r = rng(7);
     this.make_('ground', 256, 256, (g) => {
@@ -348,61 +486,7 @@ export class BootScene extends Phaser.Scene {
         g.fillCircle(r() * 250, r() * 250, 2 + r() * 3);
       }
     });
-    // 두 번째 맵 '검은 탑 아래': 젖은 검은 돌바닥
-    const r2 = rng(11);
-    this.make_('ground2', 256, 256, (g) => {
-      g.fillStyle(0x1e2228, 1);
-      g.fillRect(0, 0, 256, 256);
-      for (let row = 0; row < 8; row++) {
-        for (let col = 0; col < 4; col++) {
-          const x = col * 64 + (row % 2 ? 32 : 0);
-          const y = row * 32;
-          g.fillStyle([0x262b33, 0x23282f, 0x2a3038][Math.floor(r2() * 3)], 1);
-          g.fillRect(x + 2, y + 2, 60, 28);
-          g.fillRect(x - 254, y + 2, 60, 28);
-        }
-      }
-      for (let i = 0; i < 14; i++) { // 물웅덩이
-        g.fillStyle(0x3a4656, 0.35);
-        g.fillEllipse(r2() * 256, r2() * 256, 14 + r2() * 26, 6 + r2() * 10);
-      }
-      for (let i = 0; i < 120; i++) {
-        g.fillStyle(0x15181d, 1);
-        g.fillRect(Math.floor(r2() * 256), Math.floor(r2() * 256), 2, 2);
-      }
-    });
-    this.make_('prop_pillar', 60, 60, (g) => { // 쓰러진 돌기둥 토막
-      g.fillStyle(0x000000, 0.25);
-      g.fillCircle(33, 33, 26);
-      g.fillStyle(0x5a5e68, 1);
-      g.lineStyle(3, DARK, 1);
-      g.fillCircle(30, 30, 25);
-      g.strokeCircle(30, 30, 25);
-      g.lineStyle(2, 0x44474f, 1);
-      g.strokeCircle(30, 30, 16);
-      g.strokeCircle(30, 30, 7);
-    });
-    this.make_('prop_rubble', 70, 50, (g) => { // 돌무더기
-      const rr2 = rng(5);
-      for (let i = 0; i < 7; i++) {
-        g.fillStyle(i % 2 ? 0x4a4e57 : 0x5d616b, 1);
-        g.lineStyle(2, DARK, 1);
-        const x = 12 + rr2() * 46;
-        const y = 12 + rr2() * 26;
-        const sz = 8 + rr2() * 9;
-        g.fillRect(x - sz / 2, y - sz / 2, sz, sz * 0.8);
-        g.strokeRect(x - sz / 2, y - sz / 2, sz, sz * 0.8);
-      }
-    });
-    this.make_('prop_tower', 140, 300, (g) => { // 멀리 보이는 검은 탑
-      g.fillStyle(0x0c0d12, 0.9);
-      g.fillRect(40, 60, 60, 240);
-      g.fillTriangle(30, 70, 110, 70, 70, 0);
-      g.fillRect(28, 120, 84, 14);
-      g.fillRect(24, 200, 92, 16);
-      g.fillStyle(0x8a6cff, 0.7);
-      g.fillRect(64, 90, 12, 18);
-    });
+    this.drawMaps();
     // 맵에 흩어지는 장식(충돌 없음)
     this.make_('prop_car', 120, 64, (g) => {
       g.fillStyle(0x000000, 0.25);

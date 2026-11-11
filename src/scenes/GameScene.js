@@ -118,7 +118,7 @@ export class GameScene extends Phaser.Scene {
     this.textCount = 0;
     this.textPool = [];
 
-    this.add.tileSprite(0, 0, W, H, this.map.ground).setOrigin(0).setDepth(0);
+    this.add.image(W / 2, H / 2, this.map.bg).setDepth(0);
     this.scatterProps();
     this.drawBase();
 
@@ -182,13 +182,11 @@ export class GameScene extends Phaser.Scene {
   // ── 배경 ──
   scatterProps() {
     const r = seeded(Math.floor(Math.random() * 1e9));
-    const kinds = this.mapId === 'tower'
-      ? ['prop_pillar', 'prop_pillar', 'prop_rubble', 'prop_rubble', 'prop_rubble', 'prop_barrel']
-      : ['prop_car', 'prop_barrel', 'prop_barrel', 'prop_crate', 'prop_crate', 'prop_bush', 'prop_bush', 'prop_bush'];
-    if (this.mapId === 'tower') this.add.image(W - 90, 330, 'prop_tower').setDepth(1).setAlpha(0.8);
+    const kinds = this.map.props;
+    const mall = this.mapId === 'mall'; // 상점가는 양옆 가게 지붕 위에는 놓지 않는다
     let placed = 0;
     for (let tries = 0; placed < 16 && tries < 300; tries++) {
-      const x = 30 + r() * (W - 60);
+      const x = mall ? 160 + r() * (W - 320) : 30 + r() * (W - 60);
       const y = 170 + r() * (H - 340);
       if (Math.abs(x - CX) < HALF + 90 && Math.abs(y - CY) < HALF + 90) continue;
       this.add.image(x, y, kinds[Math.floor(r() * kinds.length)]).setRotation(r() * Math.PI * 2).setDepth(1).setAlpha(0.95);
@@ -527,7 +525,7 @@ export class GameScene extends Phaser.Scene {
     if (this.wave >= R.MAP2_WAVE && !this.preview && !this.save.meta.map2) {
       this.save.meta.map2 = true;
       writeSave();
-      this.time.delayedCall(2600 / this.speed, () => this.ui.toast(`두 번째 맵 「${R.MAPS.tower.name}」${josa(R.MAPS.tower.name, '이', '가').slice(-1)} 열렸어요!`));
+      this.time.delayedCall(2600 / this.speed, () => this.ui.toast(`두 번째 맵 「${R.MAPS.mall.name}」${josa(R.MAPS.mall.name, '이', '가').slice(-1)} 열렸어요!`));
     }
   }
 
@@ -559,8 +557,8 @@ export class GameScene extends Phaser.Scene {
     if (this.phase === 'over') return;
     this.phase = 'over';
     const cleared = Math.max(0, this.wave - 1);
-    if (this.mapId === 'tower') this.save.best2 ??= { wave: 0, kills: 0 };
-    const best = this.mapId === 'tower' ? this.save.best2 : this.save.best;
+    if (this.mapId === 'mall') this.save.best2 ??= { wave: 0, kills: 0 };
+    const best = this.mapId === 'mall' ? this.save.best2 : this.save.best;
     const newBest = cleared > (best.wave || 0);
     const runCoins = this.runCoins;
     best.wave = Math.max(best.wave || 0, cleared);

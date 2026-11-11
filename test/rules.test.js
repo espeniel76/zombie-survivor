@@ -205,11 +205,11 @@ describe('30웨이브 이후', () => {
 describe('맵', () => {
   it('두 번째 맵은 처음엔 잠겨 있고, 열리면 쓸 수 있다', () => {
     expect(mapUnlocked({ meta: {} }, 'field')).toBe(true);
-    expect(mapUnlocked({ meta: {} }, 'tower')).toBe(false);
-    expect(mapUnlocked({ meta: { map2: true } }, 'tower')).toBe(true);
+    expect(mapUnlocked({ meta: {} }, 'mall')).toBe(false);
+    expect(mapUnlocked({ meta: { map2: true } }, 'mall')).toBe(true);
   });
   it('두 번째 맵은 더 어렵지만 코인을 더 준다', () => {
-    expect(MAPS.tower.hp).toBeGreaterThan(MAPS.field.hp);
-    expect(MAPS.tower.coin).toBeGreaterThan(MAPS.field.coin);
+    expect(MAPS.mall.hp).toBeGreaterThan(MAPS.field.hp);
+    expect(MAPS.mall.coin).toBeGreaterThan(MAPS.field.coin);
   });
 });

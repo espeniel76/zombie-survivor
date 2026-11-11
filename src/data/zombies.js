@@ -39,8 +39,8 @@ export const ZOMBIES = {
   // 40: 북소리가 닿는 좀비는 빨라진다
   drummer: { name: '북치는 거인', tex: 'z_drummer', hp: 480, speed: 21, damage: 12, coins: 135, radius: 46, heavy: true, boss: true,
     drum: { radius: 240, speed: 1.4 } },
-  // 45: 단단하고, 체력이 저절로 차오른다(한꺼번에 몰아쳐야 한다)
-  warden: { name: '탑의 문지기', tex: 'z_warden', hp: 520, speed: 17, damage: 15, coins: 145, radius: 48, heavy: true, boss: true,
+  // 45: 안전모·작업복 차림. 단단하고, 체력이 저절로 차오른다(한꺼번에 몰아쳐야 한다)
+  foreman: { name: '공사장 거인', tex: 'z_foreman', hp: 520, speed: 17, damage: 15, coins: 145, radius: 48, heavy: true, boss: true,
     armor: 0.25, regen: 0.012 },
   // 마지막 보스(50웨이브): 소환 + 체력이 2/3, 1/3일 때 검은 비(아군 공격 속도 느려짐)
   rainlord: { name: '비를 부르는 자', tex: 'z_rainlord', hp: 2300, speed: 13, damage: 20, coins: 1500, radius: 58, heavy: true, boss: true, final: true,

@@ -17,7 +17,7 @@ const DROP = {
   walker: 1, runner: 1, spitter: 2, brute: 4, boss: 30,
   armored: 3, splitter: 2, splitling: 0, healer: 3,
   charger: 35, gravedigger: 35, ironclad: 40, rainlord: 500,
-  spewer: 30, shade: 30, frostgiant: 40, drummer: 40, warden: 45,
+  spewer: 30, shade: 30, frostgiant: 40, drummer: 40, foreman: 45,
 };
 export function dropCoins(kind) {
   return DROP[kind] ?? 1;
@@ -37,12 +37,18 @@ export function unlockMythic(save, id) {
 }
 
 // ── 맵 ──
-// 두 번째 맵은 50웨이브에 도달하면 열린다. 좀비가 더 세고 새 좀비·이변이 10웨이브 일찍 오지만, 코인을 더 준다.
+// 1번째 맵은 도로 사거리, 2번째 맵(폐허 상점가)은 50웨이브에 도달하면 열린다.
+// 2번째 맵은 좀비가 더 세고 새 좀비·이변이 10웨이브 일찍 오지만, 코인을 더 준다.
 export const MAPS = {
-  field: { name: '아홉 칸 들판', desc: '처음 지킨 들판', ground: 'ground', shift: 0, hp: 1, dmg: 1, coin: 1, drop: 1, startCoins: START_COINS },
-  tower: {
-    name: '검은 탑 아래', desc: '검은 비가 그치지 않는 탑 앞. 좀비가 더 세고 새 좀비가 일찍 와요 · 코인 1.3배 · 떨어뜨리는 코인 2배',
-    ground: 'ground2', shift: 10, hp: 1.25, dmg: 1.15, coin: 1.3, drop: 2, startCoins: 400, rain: 0.45, tint: 0.14,
+  field: {
+    name: '텅 빈 사거리', desc: '도시 한가운데, 네 길이 만나는 곳', bg: 'map_road',
+    props: ['prop_car', 'prop_car', 'prop_cone', 'prop_cone', 'prop_cone', 'prop_barrel', 'prop_crate'],
+    shift: 0, hp: 1, dmg: 1, coin: 1, drop: 1, startCoins: START_COINS,
+  },
+  mall: {
+    name: '폐허 상점가', desc: '무너진 가게들 사이 골목 · 좀비가 더 세고 새 좀비가 일찍 와요 · 코인 1.3배 · 떨어뜨리는 코인 2배', bg: 'map_mall',
+    props: ['prop_cart', 'prop_cart', 'prop_sign', 'prop_vending', 'prop_bags', 'prop_bags', 'prop_crate'],
+    shift: 10, hp: 1.25, dmg: 1.15, coin: 1.3, drop: 2, startCoins: 400, tint: 0.1,
   },
 };
 export const MAP2_WAVE = 50;
@@ -170,7 +176,7 @@ export function zombieHp(kind, w) {
 // ── 거대 좀비 차례 ──
 // 5웨이브마다 매번 다른 거대 좀비가 나온다. 50은 마지막 보스, 그 뒤로는 처음부터 다시 돈다.
 export const FINAL_WAVE = 50;
-export const BOSS_ORDER = ['boss', 'spewer', 'shade', 'charger', 'gravedigger', 'ironclad', 'frostgiant', 'drummer', 'warden'];
+export const BOSS_ORDER = ['boss', 'spewer', 'shade', 'charger', 'gravedigger', 'ironclad', 'frostgiant', 'drummer', 'foreman'];
 export function bossKind(w) {
   if (w === FINAL_WAVE) return 'rainlord';
   return BOSS_ORDER[(w / BOSS_EVERY - 1) % BOSS_ORDER.length];

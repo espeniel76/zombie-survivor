@@ -27,7 +27,7 @@ export class TitleScene extends Phaser.Scene {
     this.input.once('pointerdown', unlockAudio);
     this.input.keyboard.once('keydown', unlockAudio);
 
-    this.bg = this.add.tileSprite(0, 0, W, H, 'ground').setOrigin(0);
+    this.bg = this.add.image(W / 2, H / 2, 'map_road');
     this.walkers = [];
     for (let k = 0; k < 10; k++) this.addWalker(true);
     this.add.rectangle(W / 2, H / 2, W, H, 0x0b0e12, 0.45);
@@ -98,7 +98,7 @@ export class TitleScene extends Phaser.Scene {
     if (best.wave) c.add(text(this, W / 2, 470, `최고 기록  웨이브 ${best.wave} · 처치 ${R.formatNum(best.kills)}`, 24, COLOR.dim));
     // 큰 버튼은 '게임 시작' 하나만. 나머지는 아래 작은 버튼 한 줄
     // 두 번째 맵이 열렸으면 '게임 시작'에서 맵을 고른다
-    const map2 = R.mapUnlocked(this.save, 'tower');
+    const map2 = R.mapUnlocked(this.save, 'mall');
     c.add(button(this, W / 2, 720, 460, 116, '게임 시작', () => (map2 ? this.showMaps() : this.go('Game', { preview: null, map: 'field' })), { size: 46 }));
     if (!map2) c.add(text(this, W / 2, 810, `${R.MAP2_WAVE}웨이브에 도달하면 두 번째 맵이 열려요`, 20, COLOR.dim, { strokeThickness: 4, bold: false }));
     // 보유 코인(오른쪽 위)
@@ -122,18 +122,18 @@ export class TitleScene extends Phaser.Scene {
     this.clear();
     const c = this.main;
     c.add(text(this, W / 2, 170, '맵 고르기', 48, COLOR.text));
-    ['field', 'tower'].forEach((id, k) => {
+    ['field', 'mall'].forEach((id, k) => {
       const m = R.MAPS[id];
       const y = 420 + k * 380;
       const g = this.add.graphics();
-      c.add(panel(this, W / 2, y, 620, 330, 0x1b222b, id === 'tower' ? 0x8a6cff : 0x6cc24a, 24));
-      const thumb = this.add.tileSprite(W / 2, y - 60, 560, 150, m.ground).setOrigin(0.5);
+      c.add(panel(this, W / 2, y, 620, 330, 0x1b222b, id === 'mall' ? 0x8a6cff : 0x6cc24a, 24));
+      const thumb = this.add.tileSprite(W / 2, y - 60, 560, 150, m.bg).setOrigin(0.5);
+      thumb.setTilePosition(80, 650 - 75 - 200); // 기지 위쪽 길이 보이게
       c.add([g, thumb]);
-      if (id === 'tower') c.add(this.add.image(W / 2 + 220, y - 60, 'prop_tower').setScale(0.5));
-      const best = id === 'tower' ? this.save.best2 : this.save.best;
+      const best = id === 'mall' ? this.save.best2 : this.save.best;
       c.add(text(this, W / 2, y + 44, m.name, 36, COLOR.text));
-      c.add(text(this, W / 2, y + 84, id === 'tower' ? m.desc : `${m.desc}${best?.wave ? ` · 최고 웨이브 ${best.wave}` : ''}`, 18, COLOR.dim, { strokeThickness: 0, bold: false, wrap: 560 }));
-      if (id === 'tower' && best?.wave) c.add(text(this, W / 2, y + 124, `최고 웨이브 ${best.wave}`, 20, '#c9b8ff', { strokeThickness: 0 }));
+      c.add(text(this, W / 2, y + 84, id === 'mall' ? m.desc : `${m.desc}${best?.wave ? ` · 최고 웨이브 ${best.wave}` : ''}`, 18, COLOR.dim, { strokeThickness: 0, bold: false, wrap: 560 }));
+      if (id === 'mall' && best?.wave) c.add(text(this, W / 2, y + 124, `최고 웨이브 ${best.wave}`, 20, '#c9b8ff', { strokeThickness: 0 }));
       const zone = this.add.zone(W / 2, y, 620, 330).setInteractive({ useHandCursor: true });
       zone.on('pointerup', () => this.go('Game', { preview: null, map: id }));
       c.add(zone);
