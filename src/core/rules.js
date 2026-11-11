@@ -17,6 +17,7 @@ const DROP = {
   walker: 1, runner: 1, spitter: 2, brute: 4, boss: 30,
   armored: 3, splitter: 2, splitling: 0, healer: 3,
   charger: 35, gravedigger: 35, ironclad: 40, rainlord: 500,
+  spewer: 30, shade: 30, frostgiant: 40, drummer: 40, warden: 45,
 };
 export function dropCoins(kind) {
   return DROP[kind] ?? 1;
@@ -153,13 +154,12 @@ export function zombieHp(kind, w) {
 }
 
 // ── 거대 좀비 차례 ──
-// 5·10·15는 거대 좀비, 20부터 돌진 거인 → 무덤지기 → 철갑 거인 → 거대 좀비 순서로 돈다. 50은 마지막 보스.
+// 5웨이브마다 매번 다른 거대 좀비가 나온다. 50은 마지막 보스, 그 뒤로는 처음부터 다시 돈다.
 export const FINAL_WAVE = 50;
-const BOSS_CYCLE = ['charger', 'gravedigger', 'ironclad', 'boss'];
+export const BOSS_ORDER = ['boss', 'spewer', 'shade', 'charger', 'gravedigger', 'ironclad', 'frostgiant', 'drummer', 'warden'];
 export function bossKind(w) {
   if (w === FINAL_WAVE) return 'rainlord';
-  if (w < 20) return 'boss';
-  return BOSS_CYCLE[(w / BOSS_EVERY - 4) % BOSS_CYCLE.length];
+  return BOSS_ORDER[(w / BOSS_EVERY - 1) % BOSS_ORDER.length];
 }
 
 // ── 웨이브 이변(31웨이브부터, 마지막 보스 웨이브 빼고) ──

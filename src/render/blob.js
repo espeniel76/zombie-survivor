@@ -1108,6 +1108,11 @@ export const ZOMBIE_LOOK = {
   gravedigger: { shirt: '#2e2a38', skin: '#7f9a7a', pants: '#2a2a34', s: 2.3, deco: 'hood' },
   ironclad: { shirt: '#3a4048', skin: '#7d9468', pants: '#2a2a34', s: 2.4, deco: 'knight' },
   rainlord: { shirt: '#17151f', skin: '#56685e', pants: '#17151f', s: 2.8, deco: 'rainlord' },
+  spewer: { shirt: '#5a6a2a', skin: '#b8cc4a', pants: '#2a2a34', s: 2.3, deco: 'sack' },
+  shade: { shirt: '#241c34', skin: '#6a6488', pants: '#1a1626', s: 2.3, deco: 'shade' },
+  frostgiant: { shirt: '#3a5a7a', skin: '#a8d4e8', pants: '#2a2a34', s: 2.4, deco: 'frost' },
+  drummer: { shirt: '#6a2a24', skin: '#8fa06a', pants: '#2a2a34', s: 2.4, deco: 'drum' },
+  warden: { shirt: '#4a4a52', skin: '#8a948a', pants: '#2a2a34', s: 2.5, deco: 'warden' },
 };
 
 // 새 좀비·거대 좀비의 꾸밈(몸 중심 (0, BY), 반지름 R 기준). layer: 'back'(몸 뒤) | 'mid'(몸 위, 눈 아래)
@@ -1116,6 +1121,15 @@ function zombieDeco(ctx, d, layer) {
   if (layer === 'back') {
     if (d === 'hood') { // 무덤지기: 몸 뒤로 늘어진 두건
       ctx.beginPath(); ctx.ellipse(0, BY - 5, R + 3.5, R + 6, 0, 0, Math.PI * 2); fillStroke(ctx, '#2a2634', 2.2);
+    }
+    if (d === 'sack') { // 산성 거인: 등에 멘 산성 주머니
+      ctx.beginPath(); ctx.ellipse(-R + 2, BY - 8, 13, 16, -0.3, 0, Math.PI * 2); fillStroke(ctx, '#c8e04a', 2.2, '#5a6a1a');
+      ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.beginPath(); ctx.ellipse(-R - 2, BY - 14, 3.5, 5, -0.3, 0, Math.PI * 2); ctx.fill();
+    }
+    if (d === 'shade') { // 그림자 거인: 등 뒤로 흩날리는 너덜한 그림자
+      ctx.beginPath(); ctx.moveTo(-R - 4, BY - 8);
+      for (let k = 0; k <= 6; k++) ctx.lineTo(-R - 4 + k * ((R * 2 + 8) / 6), k % 2 ? 4 : -2);
+      ctx.lineTo(R + 4, BY - 8); ctx.closePath(); fillStroke(ctx, '#1c1628', 2, '#0a0812');
     }
     if (d === 'rainlord') { // 비를 부르는 자: 등 뒤의 검은 망토
       ctx.beginPath(); ctx.moveTo(-R + 2, BY - 14);
@@ -1165,6 +1179,35 @@ function zombieDeco(ctx, d, layer) {
     fillStroke(ctx, '#8a95a2', 2.2, '#363d45');
     ctx.strokeStyle = '#363d45'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, top + 1); ctx.lineTo(0, BY - 10); ctx.stroke();
     ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.moveTo(-3, top - 1); ctx.quadraticCurveTo(0, top - 14, 6, top - 12); ctx.quadraticCurveTo(2, top - 6, 3, top); ctx.fill();
+  }
+  if (d === 'sack') { // 산성 거인: 입가에 흐르는 산성(눈 아래)과 등 주머니 끈
+    ctx.strokeStyle = '#4a5a1a'; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(-R + 4, BY - 14); ctx.lineTo(R - 6, BY + 6); ctx.stroke();
+    ctx.fillStyle = '#d8f04a'; ctx.beginPath(); ctx.ellipse(11, BY + 9, 3, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  if (d === 'shade') { // 그림자 거인: 눈 위까지 덮은 깊은 두건
+    ctx.beginPath(); ctx.arc(0, BY, R + 2.5, Math.PI * 1.02, Math.PI * 1.98); ctx.arc(0, BY - 3, R - 7, Math.PI * 1.9, Math.PI * 1.1, true); ctx.closePath();
+    fillStroke(ctx, '#2a2238', 2.2, '#0a0812');
+    ctx.fillStyle = '#b8a8ff'; ctx.beginPath(); ctx.arc(0, top + 2, 1.8, 0, Math.PI * 2); ctx.fill();
+  }
+  if (d === 'frost') { // 서리 거인: 머리에 솟은 얼음 결정
+    for (const [x, h, w] of [[-10, 14, 5], [0, 20, 6], [10, 13, 5]]) {
+      ctx.beginPath(); ctx.moveTo(x - w, top + 6); ctx.lineTo(x, top + 6 - h); ctx.lineTo(x + w, top + 6); ctx.closePath();
+      fillStroke(ctx, '#dff6ff', 1.8, '#5a9ac0');
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.arc(-6, BY + 8, 2, 0, Math.PI * 2); ctx.arc(6, BY + 12, 1.5, 0, Math.PI * 2); ctx.fill();
+  }
+  if (d === 'drum') { // 북치는 거인: 배에 멘 북 + 머리띠
+    ctx.beginPath(); ctx.ellipse(0, BY + 11, 11, 7, 0, 0, Math.PI * 2); fillStroke(ctx, '#e8d8b8', 2, '#6a4a2a');
+    ctx.strokeStyle = '#a03a2a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(0, BY + 11, 11, 7, 0, Math.PI * 0.1, Math.PI * 0.9); ctx.stroke();
+    ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 3.2; ctx.beginPath(); ctx.arc(0, BY, R - 1, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+  }
+  if (d === 'warden') { // 탑의 문지기: 성벽 모양 투구
+    ctx.beginPath(); ctx.moveTo(-R + 1, BY - 9);
+    ctx.lineTo(-R + 1, top - 4); ctx.lineTo(-11, top - 4); ctx.lineTo(-11, top + 1); ctx.lineTo(-4, top + 1); ctx.lineTo(-4, top - 6);
+    ctx.lineTo(4, top - 6); ctx.lineTo(4, top + 1); ctx.lineTo(11, top + 1); ctx.lineTo(11, top - 4); ctx.lineTo(R - 1, top - 4); ctx.lineTo(R - 1, BY - 9); ctx.closePath();
+    fillStroke(ctx, '#7a7c86', 2.2, '#34363e');
+    ctx.strokeStyle = 'rgba(52,54,62,0.6)'; ctx.lineWidth = 1.4;
+    for (const y of [top + 6, top + 13]) { ctx.beginPath(); ctx.moveTo(-R + 2, y); ctx.lineTo(R - 2, y); ctx.stroke(); }
   }
   if (d === 'rainlord') { // 비를 부르는 자: 검은 왕관 + 머리 위 비구름
     ctx.beginPath(); ctx.moveTo(-13, top + 5); ctx.lineTo(-14, top - 7); ctx.lineTo(-7, top - 1); ctx.lineTo(0, top - 11); ctx.lineTo(7, top - 1); ctx.lineTo(14, top - 7); ctx.lineTo(13, top + 5); ctx.closePath();

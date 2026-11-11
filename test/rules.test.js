@@ -174,15 +174,14 @@ describe('30웨이브 이후', () => {
     expect(kinds(20).has('armored')).toBe(true);
     expect(kinds(30).has('healer')).toBe(true);
   });
-  it('거대 좀비는 20웨이브부터 번갈아 나오고 50웨이브는 마지막 보스', () => {
+  it('5~50웨이브 거대 좀비는 모두 다르고, 50웨이브는 마지막 보스', () => {
+    const list = [];
+    for (let w = 5; w <= FINAL_WAVE; w += 5) list.push(bossKind(w));
+    expect(new Set(list).size).toBe(10);
     expect(bossKind(5)).toBe('boss');
-    expect(bossKind(15)).toBe('boss');
     expect(bossKind(20)).toBe('charger');
-    expect(bossKind(25)).toBe('gravedigger');
-    expect(bossKind(30)).toBe('ironclad');
-    expect(bossKind(35)).toBe('boss');
     expect(bossKind(FINAL_WAVE)).toBe('rainlord');
-    expect(bossKind(55)).toBe('boss');
+    expect(bossKind(55)).toBe('spewer'); // 50 뒤로는 다시 돈다
   });
   it('이변은 31웨이브부터, 같은 이변이 두 번 연달아 나오지 않는다', () => {
     expect(waveEvent(30)).toBe(null);

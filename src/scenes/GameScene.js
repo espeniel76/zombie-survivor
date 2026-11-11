@@ -383,6 +383,14 @@ export class GameScene extends Phaser.Scene {
     for (let k = 0; k < 9; k++) this.drawCell(k);
   }
 
+  cellPos(i) {
+    return cellPos(i);
+  }
+
+  allyName(i) {
+    return this.cells[i] ? ALLY[this.cells[i].id].name : '';
+  }
+
   // 보상 카드 + 이번 웨이브 이변을 합친 배율
   computeMods() {
     const p = perkMods(this.perks);
@@ -692,7 +700,7 @@ export class GameScene extends Phaser.Scene {
         continue;
       }
       const d = Math.hypot(dx, dy) || 1;
-      const v = z.def.speed * this.mods.zSpeed * (1 - slow) * (1 - this.heroes.globalSlow) * dt;
+      const v = z.def.speed * this.mods.zSpeed * this.foes.speedMul(z) * (1 - slow) * (1 - this.heroes.globalSlow) * dt;
       z.x += (dx / d) * v;
       z.y += (dy / d) * v;
     }
@@ -731,9 +739,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   enemySpit(z) {
-    const img = this.add.image(z.x, z.y, 'spit').setDepth(7);
-    const a = Math.atan2(CY - z.y, CX - z.x);
-    this.spits.push({ img, vx: Math.cos(a) * z.def.spit.speed, vy: Math.sin(a) * z.def.spit.speed, dmg: z.dmg, from: z });
+    const sp = z.def.spit;
+    const n = sp.count || 1;
+    const base = Math.atan2(CY - z.y, CX - z.x);
+    for (let k = 0; k < n; k++) {
+      const a = base + (k - (n - 1) / 2) * (sp.spread || 0);
+      const img = this.add.image(z.x, z.y, 'spit').setDepth(7).setScale(sp.scale || 1);
+      this.spits.push({ img, vx: Math.cos(a) * sp.speed, vy: Math.sin(a) * sp.speed, dmg: z.dmg / n, from: z });
+    }
   }
 
   updateSpits(dt) {
@@ -797,6 +810,7 @@ export class GameScene extends Phaser.Scene {
       const a = ALLY[u.id];
       const st = u.st;
       const p = cellPos(i);
+      if (u.frozenUntil > this.t) continue; // 서리 거인에게 얼었다
       if (a.kind === 'repair') {
         // 시간을 모았다가 1씩 고친다(기지 체력에 소수점이 생기지 않게)
         u.fix = (u.fix || 0) + st.hps * dt;
@@ -1121,6 +1135,7 @@ export class GameScene extends Phaser.Scene {
   // ── 피해와 처치 ──
   hurt(z, amount, opts = {}) {
     if (z.dead || z.puppet) return; // 꼭두각시는 실이 끊길 때까지 다치지 않는다
+    if (this.foes.immune(z)) return; // 그림자 거인이 그림자일 때
     amount *= this.heroes.damageMul(z); // 시간 정지 중이면 더 아프다
     amount *= this.mods.dmg * this.foes.armorMul(z); // 보상 카드 '화력', 철갑
     let crit = false;
@@ -1186,6 +1201,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
     this.heroes.onKill(z);
+    this.foes.removed(z);
     z.plague = null;
     z.puppet = null;
     z.setVisible(false).setActive(false);

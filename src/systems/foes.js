@@ -45,6 +45,37 @@ export class FoeSystem {
     z.summonCd = d.summon ? d.summon.every * 0.6 : 0;
     z.healCd = d.heal ? Math.random() * d.heal.every : 0;
     z.rainIdx = 0;
+    z.phaseCd = d.phase ? d.phase.every * 0.7 : 0;
+    z.ghostUntil = 0;
+    z.frostCd = d.frost ? d.frost.every * 0.6 : 0;
+    if (d.drum) {
+      const ring = this.s.add.image(z.x, z.y, 'ring').setTint(0xff7a5a).setAlpha(0).setDepth(4.4).setScale((d.drum.radius * 2) / 64);
+      this.s.tweens.add({ targets: ring, alpha: 0.22, duration: 600 });
+      z.drumRing = ring;
+    }
+  }
+
+  // 그림자 거인이 그림자일 때는 아무 공격도 받지 않는다
+  immune(z) {
+    return z.ghostUntil > this.s.t;
+  }
+
+  // 북소리가 닿는 좀비의 속도 배율
+  speedMul(z) {
+    let m = z.ghostUntil > this.s.t ? z.def.phase.speed : 1;
+    for (const d of this.drummers || []) {
+      if (d !== z && Math.hypot(d.x - z.x, d.y - z.y) <= d.def.drum.radius) { m *= d.def.drum.speed; break; }
+    }
+    return m;
+  }
+
+  // 좀비가 쓰러지거나 사라질 때 따라다니던 그림 치우기
+  removed(z) {
+    if (z.drumRing) {
+      const r = z.drumRing;
+      z.drumRing = null;
+      this.s.tweens.add({ targets: r, alpha: 0, duration: 400, onComplete: () => r.destroy() });
+    }
   }
 
   // 받는 피해 배율(철갑일수록 덜 아프다)
@@ -60,6 +91,28 @@ export class FoeSystem {
   // 매 단계. 움직임을 여기서 처리했으면 true
   update(z, dt, edge) {
     const d = z.def;
+    const s = this.s;
+    if (d.regen && z.hp < z.maxHp) z.hp = Math.min(z.maxHp, z.hp + z.maxHp * d.regen * dt);
+    if (z.drumRing) z.drumRing.setPosition(z.x, z.y);
+    if (d.phase) {
+      if (z.ghostUntil > s.t) {
+        if (z.ghostUntil - s.t < dt * 1.5) s.tweens.add({ targets: z, alpha: 1, duration: 300 }); // 천천히 돌아온다
+      } else {
+        z.phaseCd -= dt;
+        if (z.phaseCd <= 0) {
+          z.phaseCd = d.phase.every;
+          z.ghostUntil = s.t + d.phase.time;
+          s.tweens.add({ targets: z, alpha: 0.35, duration: 300 }); // 천천히 흐려진다(깜빡임 없음)
+        }
+      }
+    }
+    if (d.frost) {
+      z.frostCd -= dt;
+      if (z.frostCd <= 0) {
+        z.frostCd = d.frost.every;
+        this.freezeCell(z);
+      }
+    }
     if (d.heal) {
       z.healCd -= dt;
       if (z.healCd <= 0) {
@@ -76,6 +129,25 @@ export class FoeSystem {
     }
     if (d.dash) return this.dash(z, dt, edge);
     return false;
+  }
+
+  // ── 서리 거인: 아군이 있는 칸 하나를 얼린다(얼음이 천천히 덮였다 녹는다) ──
+  freezeCell(z) {
+    const s = this.s;
+    const cand = [];
+    for (let i = 0; i < 9; i++) if (s.cells[i] && !(s.cells[i].frozenUntil > s.t)) cand.push(i);
+    if (!cand.length) return;
+    const i = cand[Math.floor(Math.random() * cand.length)];
+    const u = s.cells[i];
+    const time = z.def.frost.time;
+    u.frozenUntil = s.t + time;
+    const p = s.cellPos(i);
+    const ice = s.add.rectangle(p.x, p.y, 88, 88, 0xbfe9ff, 1).setDepth(6.9).setAlpha(0);
+    ice.setStrokeStyle(3, 0xffffff, 0.8);
+    s.tweens.add({ targets: ice, alpha: 0.5, duration: 300 });
+    s.tweens.add({ targets: ice, alpha: 0, delay: (time * 1000) / Math.max(1, s.speed) - 300, duration: 300, onComplete: () => ice.destroy() });
+    s.snd('impact', p.x);
+    s.ui.toast(`${s.allyName(i)} 칸이 얼었어요!`);
   }
 
   // ── 치유 좀비: 주변 좀비를 고치고, 옅은 초록 고리가 천천히 퍼진다 ──
@@ -181,6 +253,7 @@ export class FoeSystem {
   // 매 프레임: 돌진 예고선, 빗줄기
   draw(dt) {
     const s = this.s;
+    this.drummers = s.zombies.filter(z => !z.dead && z.def.drum);
     this.teleG.clear();
     for (const z of s.zombies) {
       if (z.dead || z.dashState !== 'wind') continue;

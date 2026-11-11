@@ -8,6 +8,7 @@ export const ZOMBIE_SCALE = {
   walker: 1.3, runner: 1.15, brute: 1.9, spitter: 1.3, boss: 3.0,
   armored: 1.4, splitter: 1.35, splitling: 1.0, healer: 1.3,
   charger: 2.9, gravedigger: 2.9, ironclad: 3.05, rainlord: 3.7,
+  spewer: 2.9, shade: 2.9, frostgiant: 3.0, drummer: 3.0, warden: 3.1,
 };
 
 // 몸 텍스처의 그림 상자(그림 단위). 빛, 모자, 연료통까지 들어가게.
