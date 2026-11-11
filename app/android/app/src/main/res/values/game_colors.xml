@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 게임 불러오기 화면과 같은 색. 앱이 켜질 때 흰 화면이 번쩍이지 않게 -->
+    <color name="game_bg">#11151a</color>
+</resources>

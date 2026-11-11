@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "smoke": "node scripts/smoke.mjs",
-    "build:page": "node scripts/build-page.mjs"
+    "build:page": "node scripts/build-page.mjs",
+    "app": "node scripts/build-app.mjs"
   },
   "dependencies": {
     "phaser": "^3.90.0"

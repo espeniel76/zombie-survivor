@@ -49,6 +49,7 @@ export function storyPages(scene, pages, onDone, depth = 200) {
   paint();
   c.setAlpha(0);
   scene.tweens.add({ targets: c, alpha: 1, duration: 320, ease: 'Quad.Out' });
+  c.finish = finish; // 앱의 뒤로 가기 버튼 = 건너뛰기
   return c;
 }
 

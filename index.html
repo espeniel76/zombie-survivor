@@ -25,12 +25,14 @@
       -webkit-user-select: none;
       overscroll-behavior: none;
     }
+    /* 노치·카메라 구멍을 뺀 영역. Phaser는 이 상자 크기에 맞춰 가운데 놓는다
+       (안쪽 여백(padding)으로 빼면 Phaser가 여백을 모르고 그만큼 아래로 밀린다) */
     #game {
-      width: 100vw;
-      height: 100dvh;
-      padding-top: env(safe-area-inset-top, 0px);
-      padding-bottom: env(safe-area-inset-bottom, 0px);
-      box-sizing: border-box;
+      position: fixed;
+      left: 0;
+      right: 0;
+      top: env(safe-area-inset-top, 0px);
+      bottom: env(safe-area-inset-bottom, 0px);
     }
     canvas { display: block; touch-action: none; }
 

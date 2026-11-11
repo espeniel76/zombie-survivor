@@ -739,6 +739,14 @@ export function unlockAudio() {
   if (c && c.state === 'suspended') c.resume();
 }
 
+// 앱이 뒤로 갈 때 소리 장치를 쉬게 하고, 돌아오면 다시 켠다
+export function suspendAudio() {
+  if (ctx && ctx.state === 'running') ctx.suspend();
+}
+export function resumeAudio() {
+  if (ctx && ctx.state === 'suspended') ctx.resume();
+}
+
 // name: 소리 이름, pan: -1(왼쪽) ~ 1(오른쪽)
 export function sfx(name, pan = 0) {
   if (!loadSave().settings.sound) return;

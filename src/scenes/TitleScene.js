@@ -75,8 +75,22 @@ export class TitleScene extends Phaser.Scene {
     curtainOut(this, () => this.scene.start(key, data));
   }
 
+  // 안드로이드 앱의 뒤로 가기 버튼(src/core/app.js). 처음 화면이라 더 돌아갈 곳이 없으면 false
+  back() {
+    if (this.overlay?.active) {
+      this.overlay.finish();
+      return true;
+    }
+    if (this.page !== 'main') {
+      this.showMain();
+      return true;
+    }
+    return false;
+  }
+
   showMain() {
     this.clear();
+    this.page = 'main';
     const c = this.main;
     c.add(text(this, W / 2, 300, '좀비 생존자', 96, COLOR.text, { strokeThickness: 12 }));
     c.add(text(this, W / 2, 400, '가운데 9칸을 지켜라', 34, COLOR.greenText));
@@ -103,6 +117,7 @@ export class TitleScene extends Phaser.Scene {
   // 메인 상점: 보유 코인으로 신화를 해금한다(한 번 사면 계속 전장 상점에 나온다)
   showShop() {
     this.clear();
+    this.page = 'shop';
     const c = this.main;
     c.add(panel(this, W / 2, H / 2, 692, 1200));
     c.add(text(this, W / 2, 104, '상점', 44, COLOR.text));
@@ -149,6 +164,8 @@ export class TitleScene extends Phaser.Scene {
       vanish(this, box, { duration: 140 });
       vanish(this, dim, { duration: 160 });
     };
+    box.finish = close;
+    this.overlay = box;
     box.add(panel(this, W / 2, H / 2, 560, 420));
     box.add(allyView(this, W / 2, H / 2 - 100, a.id, 1.3));
     box.add(text(this, W / 2, H / 2 + 6, `${a.name} 해금`, 34, TIERS[5].text));
@@ -177,6 +194,7 @@ export class TitleScene extends Phaser.Scene {
   // 한 쪽에 6장씩, ◀ ▶ 로 넘긴다
   showStory(page = 0) {
     this.clear();
+    this.page = 'story';
     const c = this.main;
     c.add(panel(this, W / 2, H / 2, 692, 1200));
     c.add(text(this, W / 2, 110, '이야기', 40, COLOR.text));
@@ -200,12 +218,13 @@ export class TitleScene extends Phaser.Scene {
       c.add(text(this, 64, y + 4, open ? ch.text : `웨이브 ${ch.wave}에 도달하면 열려요`, 18, open ? COLOR.text : '#5a6470',
         { ox: 0, oy: 0, strokeThickness: 0, bold: false, wrap: W - 130, align: 'left', lineSpacing: 2 }));
     });
-    c.add(button(this, W / 2 - 150, 1170, 260, 80, '처음부터 보기', () => storyPages(this, PROLOGUE, null), { fill: 0x5a4a7a, textColor: '#f4eeff', size: 26 }));
+    c.add(button(this, W / 2 - 150, 1170, 260, 80, '처음부터 보기', () => (this.overlay = storyPages(this, PROLOGUE, null)), { fill: 0x5a4a7a, textColor: '#f4eeff', size: 26 }));
     c.add(button(this, W / 2 + 150, 1170, 260, 80, '뒤로', () => this.showMain(), { fill: 0x3a4652, textColor: '#eef3ea' }));
   }
 
   showSettings() {
     this.clear();
+    this.page = 'settings';
     const c = this.main;
     c.add(panel(this, W / 2, H / 2, 620, 600));
     c.add(text(this, W / 2, H / 2 - 230, '설정', 44, COLOR.text));
@@ -216,6 +235,7 @@ export class TitleScene extends Phaser.Scene {
 
   showBook() {
     this.clear();
+    this.page = 'book';
     const c = this.main;
     c.add(panel(this, W / 2, H / 2, 692, 1200));
     c.add(text(this, W / 2, 110, `아군 도감 · ${ALLIES.length}명`, 40, COLOR.text));

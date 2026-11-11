@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 앱이 켜지는 동안 보이는 화면: 게임과 같은 어두운 색 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/game_bg" />
+</layer-list>

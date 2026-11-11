@@ -96,10 +96,26 @@ export class UIScene extends Phaser.Scene {
     if (!this.save.story.prologue) this.time.delayedCall(60, () => this.showPrologue());
   }
 
+  // 안드로이드 앱의 뒤로 가기 버튼(src/core/app.js). 키보드 ESC처럼 움직인다
+  back() {
+    if (this.preview) return this.backToBook();
+    if (this.storyOpen) return this.story?.finish(); // 이야기는 건너뛰기
+    if (this.perkChoices) return; // 보상 카드는 하나 골라야 한다
+    if (this.game_.phase === 'over') return this.toTitle();
+    if (this.modal) this.closeModal();
+    else this.openPause();
+  }
+
+  // 앱이 뒤로 갈 때(홈 버튼, 전화 등): 싸우는 중이면 일시정지 창을 열어 둔다
+  pauseForApp() {
+    if (this.preview || this.storyOpen || this.modal || this.game_.phase === 'over') return;
+    this.openPause();
+  }
+
   showPrologue() {
     this.scene.pause('Game');
     this.storyOpen = true;
-    storyPages(this, PROLOGUE, () => {
+    this.story = storyPages(this, PROLOGUE, () => {
       this.storyOpen = false;
       this.save.story.prologue = true;
       writeSave();
@@ -144,7 +160,7 @@ export class UIScene extends Phaser.Scene {
     this.time.delayedCall(900, () => {
       this.scene.pause('Game');
       this.storyOpen = true;
-      storyPages(this, ENDING, () => {
+      this.story = storyPages(this, ENDING, () => {
         this.storyOpen = false;
         if (!this.modal && this.game_.phase !== 'over') this.scene.resume('Game');
         this.banner(first ? '엔딩 보상 · 보유 코인 +1,000\n끝없는 밤이 이어져요' : '끝없는 밤이 이어져요');
