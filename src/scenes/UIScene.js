@@ -623,14 +623,14 @@ export class UIScene extends Phaser.Scene {
   }
 
   // ── 결과 ──
-  showResult({ wave, cleared, kills, newBest, runCoins = 0 }) {
+  showResult({ wave, cleared, kills, newBest, runCoins = 0, bestWave = 0 }) {
     const c = this.openModal(false);
     c.add(panel(this, W / 2, H / 2, 620, 700));
     c.add(text(this, W / 2, H / 2 - 270, '기지가 무너졌어요', 44, '#ff8a80'));
     c.add(text(this, W / 2, H / 2 - 190, `웨이브 ${wave}에서 쓰러짐`, 30, COLOR.text));
     c.add(text(this, W / 2, H / 2 - 110, `막아낸 웨이브  ${cleared}`, 30, COLOR.greenText));
     c.add(text(this, W / 2, H / 2 - 60, `처치한 좀비  ${R.formatNum(kills)}`, 30, COLOR.text));
-    c.add(text(this, W / 2, H / 2 + 0, newBest ? '최고 기록!' : `최고 기록  웨이브 ${this.save.best.wave}`, 30, newBest ? COLOR.orangeText : COLOR.dim));
+    c.add(text(this, W / 2, H / 2 + 0, newBest ? '최고 기록!' : `최고 기록  웨이브 ${bestWave}`, 30, newBest ? COLOR.orangeText : COLOR.dim));
     c.add(text(this, W / 2, H / 2 + 56, `주운 코인 +${R.formatNum(runCoins)}  ·  보유 ${R.formatNum(this.save.coins || 0)}`, 26, '#ffe08a'));
     c.add(button(this, W / 2, H / 2 + 140, 400, 88, '다시 하기', () => curtainOut(this, () => {
       this.modal = null;

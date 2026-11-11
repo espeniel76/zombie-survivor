@@ -97,7 +97,10 @@ export class TitleScene extends Phaser.Scene {
     const best = this.save.best;
     if (best.wave) c.add(text(this, W / 2, 470, `최고 기록  웨이브 ${best.wave} · 처치 ${R.formatNum(best.kills)}`, 24, COLOR.dim));
     // 큰 버튼은 '게임 시작' 하나만. 나머지는 아래 작은 버튼 한 줄
-    c.add(button(this, W / 2, 720, 460, 116, '게임 시작', () => this.go('Game', { preview: null }), { size: 46 }));
+    // 두 번째 맵이 열렸으면 '게임 시작'에서 맵을 고른다
+    const map2 = R.mapUnlocked(this.save, 'tower');
+    c.add(button(this, W / 2, 720, 460, 116, '게임 시작', () => (map2 ? this.showMaps() : this.go('Game', { preview: null, map: 'field' })), { size: 46 }));
+    if (!map2) c.add(text(this, W / 2, 810, `${R.MAP2_WAVE}웨이브에 도달하면 두 번째 맵이 열려요`, 20, COLOR.dim, { strokeThickness: 4, bold: false }));
     // 보유 코인(오른쪽 위)
     const wallet = text(this, 696, 54, R.formatNum(this.save.coins || 0), 32, '#ffe08a', { ox: 1 });
     c.add([wallet, this.add.image(696 - wallet.width - 24, 54, 'item_coin').setScale(1.4)]);
@@ -112,6 +115,30 @@ export class TitleScene extends Phaser.Scene {
     const x0 = W / 2 - ((bw + gap) * (small.length - 1)) / 2;
     small.forEach(([label, fn, color], k) =>
       c.add(button(this, x0 + k * (bw + gap), 1150, bw, 72, label, fn, { fill: 0x26303a, textColor: color, size: 24 })));
+  }
+
+  // 맵 고르기(두 번째 맵이 열린 뒤)
+  showMaps() {
+    this.clear();
+    const c = this.main;
+    c.add(text(this, W / 2, 170, '맵 고르기', 48, COLOR.text));
+    ['field', 'tower'].forEach((id, k) => {
+      const m = R.MAPS[id];
+      const y = 420 + k * 380;
+      const g = this.add.graphics();
+      c.add(panel(this, W / 2, y, 620, 330, 0x1b222b, id === 'tower' ? 0x8a6cff : 0x6cc24a, 24));
+      const thumb = this.add.tileSprite(W / 2, y - 60, 560, 150, m.ground).setOrigin(0.5);
+      c.add([g, thumb]);
+      if (id === 'tower') c.add(this.add.image(W / 2 + 220, y - 60, 'prop_tower').setScale(0.5));
+      const best = id === 'tower' ? this.save.best2 : this.save.best;
+      c.add(text(this, W / 2, y + 44, m.name, 36, COLOR.text));
+      c.add(text(this, W / 2, y + 84, id === 'tower' ? m.desc : `${m.desc}${best?.wave ? ` · 최고 웨이브 ${best.wave}` : ''}`, 18, COLOR.dim, { strokeThickness: 0, bold: false, wrap: 560 }));
+      if (id === 'tower' && best?.wave) c.add(text(this, W / 2, y + 124, `최고 웨이브 ${best.wave}`, 20, '#c9b8ff', { strokeThickness: 0 }));
+      const zone = this.add.zone(W / 2, y, 620, 330).setInteractive({ useHandCursor: true });
+      zone.on('pointerup', () => this.go('Game', { preview: null, map: id }));
+      c.add(zone);
+    });
+    c.add(button(this, W / 2, 1180, 300, 80, '뒤로', () => this.showMain(), { fill: 0x3a4652, textColor: '#eef3ea' }));
   }
 
   // 메인 상점: 보유 코인으로 신화를 해금한다(한 번 사면 계속 전장 상점에 나온다)

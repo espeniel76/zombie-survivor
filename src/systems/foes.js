@@ -7,7 +7,10 @@ import * as R from '../core/rules.js';
 const DEPTH_FX = 8.4;
 
 export class FoeSystem {
-  constructor(scene, { CX, CY }) {
+  // rain/tint: 맵이 늘 깔고 있는 비와 어둑함(검은 탑 아래)
+  constructor(scene, { CX, CY, rain = 0, tint = 0 }) {
+    this.baseRain = rain;
+    this.baseTint = tint;
     this.s = scene;
     this.CX = CX;
     this.CY = CY;
@@ -19,7 +22,9 @@ export class FoeSystem {
     this.rainWant = 0;
     this.makeFogTexture();
     this.fog = scene.add.image(360, 640, 'fogTex').setDisplaySize(720, 1280).setDepth(DEPTH_FX).setAlpha(0);
-    this.tint = scene.add.rectangle(360, 640, 720, 1280, 0x000000, 1).setDepth(DEPTH_FX - 0.1).setAlpha(0);
+    this.tint = scene.add.rectangle(360, 640, 720, 1280, 0x05060a, 1).setDepth(DEPTH_FX - 0.1).setAlpha(tint);
+    this.rainOn = rain;
+    this.rainWant = rain;
   }
 
   makeFogTexture() {
@@ -239,9 +244,9 @@ export class FoeSystem {
   applyEvent(kind) {
     const fogOn = kind === 'fog';
     this.s.tweens.add({ targets: this.fog, alpha: fogOn ? 0.75 : 0, duration: 700 });
-    this.rainWant = kind === 'storm' ? 1 : 0;
+    this.rainWant = kind === 'storm' ? 1 : this.baseRain;
     if (kind === 'redmoon') this.fadeTint(0x5a0e14, 0.16);
-    else this.fadeTint(0x000000, 0);
+    else this.fadeTint(0x05060a, this.baseTint);
   }
 
   fadeTint(color, alpha) {

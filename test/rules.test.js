@@ -3,7 +3,7 @@ import {
   awakenStats,
   neighbors, upgradeCost, sellPrice, rateBuffAt, allyStats, hpMul, waveSpec, pickZombie,
   zombieHp, isBossWave, dropCoins, isUnlocked, unlockMythic, MYTHIC_UNLOCK,
-  bossKind, waveEvent, EVENTS, FINAL_WAVE,
+  bossKind, waveEvent, EVENTS, FINAL_WAVE, MAPS, mapUnlocked,
 } from '../src/core/rules.js';
 import { rollPerks, perkMods } from '../src/data/perks.js';
 import { ALLIES, ALLY, TIERS, MAX_ALLY_LEVEL } from '../src/data/allies.js';
@@ -199,5 +199,17 @@ describe('30웨이브 이후', () => {
     expect(perkMods({}).dmg).toBe(1);
     expect(perkMods({ power: 2 }).dmg).toBeCloseTo(1.3);
     expect(perkMods({ crit: 9 }).crit).toBe(0.5);
+  });
+});
+
+describe('맵', () => {
+  it('두 번째 맵은 처음엔 잠겨 있고, 열리면 쓸 수 있다', () => {
+    expect(mapUnlocked({ meta: {} }, 'field')).toBe(true);
+    expect(mapUnlocked({ meta: {} }, 'tower')).toBe(false);
+    expect(mapUnlocked({ meta: { map2: true } }, 'tower')).toBe(true);
+  });
+  it('두 번째 맵은 더 어렵지만 코인을 더 준다', () => {
+    expect(MAPS.tower.hp).toBeGreaterThan(MAPS.field.hp);
+    expect(MAPS.tower.coin).toBeGreaterThan(MAPS.field.coin);
   });
 });

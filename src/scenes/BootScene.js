@@ -348,6 +348,61 @@ export class BootScene extends Phaser.Scene {
         g.fillCircle(r() * 250, r() * 250, 2 + r() * 3);
       }
     });
+    // 두 번째 맵 '검은 탑 아래': 젖은 검은 돌바닥
+    const r2 = rng(11);
+    this.make_('ground2', 256, 256, (g) => {
+      g.fillStyle(0x1e2228, 1);
+      g.fillRect(0, 0, 256, 256);
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 4; col++) {
+          const x = col * 64 + (row % 2 ? 32 : 0);
+          const y = row * 32;
+          g.fillStyle([0x262b33, 0x23282f, 0x2a3038][Math.floor(r2() * 3)], 1);
+          g.fillRect(x + 2, y + 2, 60, 28);
+          g.fillRect(x - 254, y + 2, 60, 28);
+        }
+      }
+      for (let i = 0; i < 14; i++) { // 물웅덩이
+        g.fillStyle(0x3a4656, 0.35);
+        g.fillEllipse(r2() * 256, r2() * 256, 14 + r2() * 26, 6 + r2() * 10);
+      }
+      for (let i = 0; i < 120; i++) {
+        g.fillStyle(0x15181d, 1);
+        g.fillRect(Math.floor(r2() * 256), Math.floor(r2() * 256), 2, 2);
+      }
+    });
+    this.make_('prop_pillar', 60, 60, (g) => { // 쓰러진 돌기둥 토막
+      g.fillStyle(0x000000, 0.25);
+      g.fillCircle(33, 33, 26);
+      g.fillStyle(0x5a5e68, 1);
+      g.lineStyle(3, DARK, 1);
+      g.fillCircle(30, 30, 25);
+      g.strokeCircle(30, 30, 25);
+      g.lineStyle(2, 0x44474f, 1);
+      g.strokeCircle(30, 30, 16);
+      g.strokeCircle(30, 30, 7);
+    });
+    this.make_('prop_rubble', 70, 50, (g) => { // 돌무더기
+      const rr2 = rng(5);
+      for (let i = 0; i < 7; i++) {
+        g.fillStyle(i % 2 ? 0x4a4e57 : 0x5d616b, 1);
+        g.lineStyle(2, DARK, 1);
+        const x = 12 + rr2() * 46;
+        const y = 12 + rr2() * 26;
+        const sz = 8 + rr2() * 9;
+        g.fillRect(x - sz / 2, y - sz / 2, sz, sz * 0.8);
+        g.strokeRect(x - sz / 2, y - sz / 2, sz, sz * 0.8);
+      }
+    });
+    this.make_('prop_tower', 140, 300, (g) => { // 멀리 보이는 검은 탑
+      g.fillStyle(0x0c0d12, 0.9);
+      g.fillRect(40, 60, 60, 240);
+      g.fillTriangle(30, 70, 110, 70, 70, 0);
+      g.fillRect(28, 120, 84, 14);
+      g.fillRect(24, 200, 92, 16);
+      g.fillStyle(0x8a6cff, 0.7);
+      g.fillRect(64, 90, 12, 18);
+    });
     // 맵에 흩어지는 장식(충돌 없음)
     this.make_('prop_car', 120, 64, (g) => {
       g.fillStyle(0x000000, 0.25);

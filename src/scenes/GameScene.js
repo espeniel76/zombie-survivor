@@ -82,6 +82,8 @@ export class GameScene extends Phaser.Scene {
   // data.preview = 아군 id → 도감 미리보기: 그 아군 하나가 끝없이 오는 좀비와 싸우는 모습만 보여 준다(기록·이야기 없음)
   create(data) {
     this.preview = data?.preview || null;
+    this.mapId = !this.preview && data?.map && R.MAPS[data.map] ? data.map : 'field';
+    this.map = R.MAPS[this.mapId];
     this.previewFrom = data?.from || 'book';
     this.save = loadSave();
     this.speed = 1;
@@ -89,7 +91,7 @@ export class GameScene extends Phaser.Scene {
     this.wave = 0;
     this.phase = 'break';
     this.phaseLeft = R.FIRST_BREAK;
-    this.coins = this.preview ? 0 : R.START_COINS;
+    this.coins = this.preview ? 0 : this.map.startCoins;
     this.baseMax = R.BASE_HP;
     this.baseHp = R.BASE_HP;
     this.kills = 0;
@@ -116,7 +118,7 @@ export class GameScene extends Phaser.Scene {
     this.textCount = 0;
     this.textPool = [];
 
-    this.add.tileSprite(0, 0, W, H, 'ground').setOrigin(0).setDepth(0);
+    this.add.tileSprite(0, 0, W, H, this.map.ground).setOrigin(0).setDepth(0);
     this.scatterProps();
     this.drawBase();
 
@@ -138,7 +140,7 @@ export class GameScene extends Phaser.Scene {
     this.rangeG = this.add.graphics().setDepth(4);
     this.lineG = this.add.graphics().setDepth(9);
     this.heroes = new HeroSystem(this, { CX, CY, HALF, cellPos });
-    this.foes = new FoeSystem(this, { CX, CY });
+    this.foes = new FoeSystem(this, { CX, CY, rain: this.map.rain || 0, tint: this.map.tint || 0 });
 
     this.applySpeed();
     this.scene.launch('UI');
@@ -180,7 +182,10 @@ export class GameScene extends Phaser.Scene {
   // ── 배경 ──
   scatterProps() {
     const r = seeded(Math.floor(Math.random() * 1e9));
-    const kinds = ['prop_car', 'prop_barrel', 'prop_barrel', 'prop_crate', 'prop_crate', 'prop_bush', 'prop_bush', 'prop_bush'];
+    const kinds = this.mapId === 'tower'
+      ? ['prop_pillar', 'prop_pillar', 'prop_rubble', 'prop_rubble', 'prop_rubble', 'prop_barrel']
+      : ['prop_car', 'prop_barrel', 'prop_barrel', 'prop_crate', 'prop_crate', 'prop_bush', 'prop_bush', 'prop_bush'];
+    if (this.mapId === 'tower') this.add.image(W - 90, 330, 'prop_tower').setDepth(1).setAlpha(0.8);
     let placed = 0;
     for (let tries = 0; placed < 16 && tries < 300; tries++) {
       const x = 30 + r() * (W - 60);
@@ -496,13 +501,13 @@ export class GameScene extends Phaser.Scene {
     this.phase = 'wave';
     this.spec = R.waveSpec(this.wave);
     // 31웨이브부터는 웨이브마다 이변이 하나
-    this.event = R.waveEvent(this.wave, this.lastEvent);
+    this.event = R.waveEvent(this.wave + this.map.shift, this.lastEvent);
     if (this.event) this.lastEvent = this.event;
     this.updateMods();
     this.foes.applyEvent(this.event);
     this.queue = [];
     const count = Math.max(1, Math.round(this.spec.count * this.mods.count));
-    for (let k = 0; k < count; k++) this.queue.push(R.pickZombie(this.wave));
+    for (let k = 0; k < count; k++) this.queue.push(R.pickZombie(this.wave + this.map.shift));
     const bossKind = this.spec.boss ? R.bossKind(this.wave) : null;
     if (bossKind) this.queue.splice(Math.floor(this.queue.length * 0.3), 0, bossKind);
     this.spawnT = 0;
@@ -519,6 +524,11 @@ export class GameScene extends Phaser.Scene {
       this.time.delayedCall(2300 / this.speed, () => this.ui.chapter(ch));
     }
     this.snd(this.spec.boss ? 'boss' : 'wave');
+    if (this.wave >= R.MAP2_WAVE && !this.preview && !this.save.meta.map2) {
+      this.save.meta.map2 = true;
+      writeSave();
+      this.time.delayedCall(2600 / this.speed, () => this.ui.toast(`두 번째 맵 「${R.MAPS.tower.name}」${josa(R.MAPS.tower.name, '이', '가').slice(-1)} 열렸어요!`));
+    }
   }
 
   endWave() {
@@ -549,14 +559,15 @@ export class GameScene extends Phaser.Scene {
     if (this.phase === 'over') return;
     this.phase = 'over';
     const cleared = Math.max(0, this.wave - 1);
-    const best = this.save.best;
+    if (this.mapId === 'tower') this.save.best2 ??= { wave: 0, kills: 0 };
+    const best = this.mapId === 'tower' ? this.save.best2 : this.save.best;
     const newBest = cleared > (best.wave || 0);
     const runCoins = this.runCoins;
     best.wave = Math.max(best.wave || 0, cleared);
     best.kills = Math.max(best.kills || 0, this.kills);
     writeSave();
     this.snd('lose');
-    this.ui.showResult({ wave: this.wave, cleared, kills: this.kills, newBest, runCoins });
+    this.ui.showResult({ wave: this.wave, cleared, kills: this.kills, newBest, runCoins, bestWave: best.wave });
   }
 
   // at = {x, y}: 그 자리에서 나온다(소환·분열). 없으면 화면 밖 둘레에서.
@@ -571,8 +582,8 @@ export class GameScene extends Phaser.Scene {
     z.kind = kind;
     z.def = def;
     const m = this.mods;
-    z.hp = z.maxHp = Math.max(1, Math.round(R.zombieHp(kind, this.wave) * (def.boss ? 1 : m.zHp)));
-    z.dmg = def.damage * R.damageMul(this.wave) * m.zDmg;
+    z.hp = z.maxHp = Math.max(1, Math.round(R.zombieHp(kind, this.wave) * (def.boss ? 1 : m.zHp) * this.map.hp));
+    z.dmg = def.damage * R.damageMul(this.wave) * m.zDmg * this.map.dmg;
     z.r = def.radius;
     z.dead = false;
     z.slow = 0;
@@ -1172,12 +1183,12 @@ export class GameScene extends Phaser.Scene {
 
   killZombie(z) {
     z.dead = true;
-    const reward = Math.round(R.zombieReward(z.kind, this.wave) * this.mods.coin);
+    const reward = Math.round(R.zombieReward(z.kind, this.wave) * this.mods.coin * this.map.coin);
     this.coins += reward;
     this.kills++;
     // 떨어뜨린 코인은 보유 코인으로(미리보기에서는 없음)
     if (!this.preview) {
-      const drop = R.dropCoins(z.kind);
+      const drop = R.dropCoins(z.kind) * this.map.drop;
       if (drop > 0) {
         this.runCoins += drop;
         this.save.coins = (this.save.coins || 0) + drop;

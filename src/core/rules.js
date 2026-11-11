@@ -36,6 +36,20 @@ export function unlockMythic(save, id) {
   return true;
 }
 
+// ── 맵 ──
+// 두 번째 맵은 50웨이브에 도달하면 열린다. 좀비가 더 세고 새 좀비·이변이 10웨이브 일찍 오지만, 코인을 더 준다.
+export const MAPS = {
+  field: { name: '아홉 칸 들판', desc: '처음 지킨 들판', ground: 'ground', shift: 0, hp: 1, dmg: 1, coin: 1, drop: 1, startCoins: START_COINS },
+  tower: {
+    name: '검은 탑 아래', desc: '검은 비가 그치지 않는 탑 앞. 좀비가 더 세고 새 좀비가 일찍 와요 · 코인 1.3배 · 떨어뜨리는 코인 2배',
+    ground: 'ground2', shift: 10, hp: 1.25, dmg: 1.15, coin: 1.3, drop: 2, startCoins: 400, rain: 0.45, tint: 0.14,
+  },
+};
+export const MAP2_WAVE = 50;
+export function mapUnlocked(save, id) {
+  return id === 'field' || !!save?.meta?.map2;
+}
+
 // ── 3×3 칸 ──
 // 0 1 2
 // 3 4 5
