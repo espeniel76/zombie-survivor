@@ -20,8 +20,8 @@ export const ZOMBIES = {
   healer: { name: '치유 좀비', tex: 'z_healer', hp: 26, speed: 34, damage: 3, coins: 9, radius: 20, heal: { radius: 140, pct: 0.05, every: 1 } },
 
   // ── 20웨이브부터 번갈아 나오는 거대 좀비들 ──
-  // 미식축구 거인: 잠깐 멈춰 힘을 모았다가 기지 쪽으로 빠르게 달려든다
-  charger: { name: '미식축구 거인', tex: 'z_charger', hp: 470, speed: 26, damage: 12, coins: 130, radius: 44, heavy: true, boss: true,
+  // 20 배달 기사 거인: 잠깐 멈춰 힘을 모았다가 기지 쪽으로 빠르게 달려든다
+  charger: { name: '배달 기사 거인', tex: 'z_charger', hp: 470, speed: 26, damage: 12, coins: 130, radius: 44, heavy: true, boss: true,
     dash: { every: 5, windup: 0.9, time: 0.55, mul: 6 } },
   // 확성기 거인: 몇 초마다 확성기로 주변에 좀비를 불러 모은다
   gravedigger: { name: '확성기 거인', tex: 'z_gravedigger', hp: 430, speed: 22, damage: 10, coins: 130, radius: 44, heavy: true, boss: true,
@@ -36,8 +36,8 @@ export const ZOMBIES = {
   // 35 소방관 거인: 몇 초마다 소화기 거품으로 아군 한 칸을 덮어 잠깐 공격을 못 하게 한다
   frostgiant: { name: '소방관 거인', tex: 'z_frostgiant', hp: 500, speed: 20, damage: 12, coins: 135, radius: 46, heavy: true, boss: true,
     frost: { every: 7, time: 3 } },
-  // 40 훈련 교관 거인: 호루라기 소리가 닿는 좀비는 빨라진다
-  drummer: { name: '훈련 교관 거인', tex: 'z_drummer', hp: 480, speed: 21, damage: 12, coins: 135, radius: 46, heavy: true, boss: true,
+  // 40 조교 거인: 호루라기 소리("뛰어!")가 닿는 좀비는 빨라진다
+  drummer: { name: '조교 거인', tex: 'z_drummer', hp: 480, speed: 21, damage: 12, coins: 135, radius: 46, heavy: true, boss: true,
     drum: { radius: 240, speed: 1.4 } },
   // 45: 안전모·작업복 차림. 단단하고, 체력이 저절로 차오른다(한꺼번에 몰아쳐야 한다)
   foreman: { name: '공사장 거인', tex: 'z_foreman', hp: 520, speed: 17, damage: 15, coins: 145, radius: 48, heavy: true, boss: true,

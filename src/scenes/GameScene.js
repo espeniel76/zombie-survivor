@@ -689,7 +689,7 @@ export class GameScene extends Phaser.Scene {
       z.setFlipX(dx < 0);
       const spit = z.def.spit;
       z.attacking = edge <= (spit ? spit.keep : z.r + 12);
-      if (this.foes.update(z, dt, edge)) continue; // 미식축구 거인이 힘을 모으거나 달려드는 중
+      if (this.foes.update(z, dt, edge)) continue; // 배달 기사 거인이 힘을 모으거나 달려드는 중
       if (spit && edge <= spit.keep) {
         z.spitT -= dt * (1 - slow);
         if (z.spitT <= 0) {

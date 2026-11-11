@@ -1,6 +1,6 @@
 // 20웨이브 이후의 좀비 능력과 웨이브 이변 화면.
 //   철갑(받는 피해 감소) · 분열(쓰러지면 둘로) · 치유(주변 좀비 회복)
-//   미식축구 거인(힘을 모았다가 달려듦) · 확성기 거인/최초의 감염자(좀비 소환) · 검은 비(아군 공격 느려짐)
+//   배달 기사 거인(힘을 모았다가 달려듦) · 확성기 거인/최초의 감염자(좀비 소환) · 검은 비(아군 공격 느려짐)
 //   이변: 안개 · 폭우 · 붉은 달 등은 화면을 천천히 덮었다 걷는다(번쩍임 없음)
 import * as R from '../core/rules.js';
 
@@ -65,7 +65,7 @@ export class FoeSystem {
     return z.ghostUntil > this.s.t;
   }
 
-  // 훈련 교관 거인의 호루라기가 닿는 좀비의 속도 배율
+  // 조교 거인의 호루라기가 닿는 좀비의 속도 배율
   speedMul(z) {
     let m = z.ghostUntil > this.s.t ? z.def.phase.speed : 1;
     for (const d of this.drummers || []) {
@@ -196,7 +196,7 @@ export class FoeSystem {
     s.snd('poof', z.x);
   }
 
-  // ── 미식축구 거인: 멈춰서 힘을 모으는 동안 예고선이 보이고, 그다음 기지 쪽으로 빠르게 달려든다 ──
+  // ── 배달 기사 거인: 멈춰서 힘을 모으는 동안 예고선이 보이고, 그다음 기지 쪽으로 빠르게 달려든다 ──
   dash(z, dt, edge) {
     const s = this.s;
     const ds = z.def.dash;
