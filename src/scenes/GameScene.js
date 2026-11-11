@@ -99,8 +99,8 @@ export class GameScene extends Phaser.Scene {
       this.wave = Math.max(0, (data?.startWave || 1) - 1);
       this.phaseLeft = 5;
     }
-    this.baseMax = R.BASE_HP;
-    this.baseHp = R.BASE_HP;
+    this.baseMax = this.map.baseHp || R.BASE_HP; // 2번째 맵은 기지가 더 튼튼하다
+    this.baseHp = this.baseMax;
     this.kills = 0;
     this.runCoins = 0; // 이번 판에 주운 코인(보유 코인에 더해진다)
     this.perks = {}; // 고른 보상 카드(id → 개수)
@@ -609,7 +609,7 @@ export class GameScene extends Phaser.Scene {
     z.kind = kind;
     z.def = def;
     const m = this.mods;
-    z.hp = z.maxHp = Math.max(1, Math.round(R.zombieHp(kind, this.wave) * (def.boss ? 1 : m.zHp) * this.map.hp));
+    z.hp = z.maxHp = Math.max(1, Math.round(R.zombieHp(kind, this.wave) * (def.boss ? 1 : m.zHp * this.map.hp)));
     z.dmg = def.damage * R.damageMul(this.wave) * m.zDmg * this.map.dmg;
     z.r = def.radius;
     z.dead = false;

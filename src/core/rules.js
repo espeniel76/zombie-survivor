@@ -48,7 +48,7 @@ export const MAPS = {
   mall: {
     name: '폐허 상점가', desc: '무너진 가게들 사이 골목 · 좀비가 더 세고 새 좀비가 일찍 와요 · 코인 1.3배 · 떨어뜨리는 코인 2배', bg: 'map_mall',
     props: ['prop_cart', 'prop_cart', 'prop_sign', 'prop_vending', 'prop_bags', 'prop_bags', 'prop_crate'],
-    shift: 10, hp: 1.25, dmg: 1.15, coin: 1.3, drop: 2, startCoins: 400, tint: 0.1,
+    shift: 10, hp: 1.25, dmg: 1.15, coin: 1.3, drop: 2, startCoins: 400, baseHp: 450, tint: 0.1,
   },
 };
 export const MAP2_WAVE = 50;

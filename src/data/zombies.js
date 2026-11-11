@@ -44,5 +44,5 @@ export const ZOMBIES = {
     armor: 0.25, regen: 0.012 },
   // 마지막 보스(50웨이브) 최초의 감염자: 검은 비를 처음 맞은 사람. 소환 + 체력이 2/3, 1/3일 때 검은 비(아군 공격 속도 느려짐)
   rainlord: { name: '최초의 감염자', tex: 'z_rainlord', hp: 2300, speed: 13, damage: 20, coins: 1500, radius: 58, heavy: true, boss: true, final: true,
-    armor: 0.2, summon: { every: 7, count: 4, kinds: ['armored', 'splitter', 'healer', 'runner'] }, blackRain: { at: [0.66, 0.33], time: 6, slow: 0.35 } },
+    armor: 0.2, summon: { every: 7, count: 3, kinds: ['armored', 'splitter', 'healer'] }, blackRain: { at: [0.66, 0.33], time: 6, slow: 0.35 } },
 };
