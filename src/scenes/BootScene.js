@@ -423,6 +423,25 @@ export class BootScene extends Phaser.Scene {
         for (let k = 0; k < 4; k++) { const nx = x + (m() - 0.5) * 44; const ny = y + (m() - 0.5) * 44; g.lineBetween(x, y, nx, ny); x = nx; y = ny; }
       }
     });
+    // 진압 경찰 거인의 방패(투명한 진압 방패)
+    this.make_('riotshield', 30, 64, (g) => {
+      g.fillStyle(0x9ec8f0, 0.45);
+      g.lineStyle(3, 0x2a3a5a, 1);
+      g.fillRoundedRect(3, 3, 24, 58, 6);
+      g.strokeRoundedRect(3, 3, 24, 58, 6);
+      g.fillStyle(0xffffff, 0.4);
+      g.fillRect(8, 8, 4, 30);
+    });
+    // 소방관 거인의 소화기 거품(칸을 덮는다)
+    this.make_('foam', 92, 92, (g) => {
+      const fr = rng(9);
+      g.fillStyle(0xf2f4f6, 0.75);
+      g.fillRoundedRect(4, 4, 84, 84, 14);
+      for (let i = 0; i < 22; i++) {
+        g.fillStyle(0xffffff, 0.9);
+        g.fillCircle(10 + fr() * 72, 10 + fr() * 72, 4 + fr() * 9);
+      }
+    });
     // 장식: 라바콘, 쇼핑 카트, 쓰러진 간판, 자판기, 쓰레기 봉투
     this.make_('prop_cone', 34, 34, (g) => {
       g.fillStyle(0x000000, 0.25); g.fillCircle(19, 19, 14);

@@ -510,7 +510,7 @@ export class GameScene extends Phaser.Scene {
     if (bossKind) this.queue.splice(Math.floor(this.queue.length * 0.3), 0, bossKind);
     this.spawnT = 0;
     const ev = this.event ? R.EVENTS[this.event] : null;
-    if (this.wave === R.FINAL_WAVE) this.ui.banner(`웨이브 ${this.wave} · 마지막 밤\n${josa(ZOMBIES[bossKind].name, '이', '가')} 내려와요`);
+    if (this.wave === R.FINAL_WAVE) this.ui.banner(`웨이브 ${this.wave} · 마지막 밤\n${josa(ZOMBIES[bossKind].name, '이', '가')} 다가와요`);
     else if (bossKind) this.ui.banner(`웨이브 ${this.wave} · ${ZOMBIES[bossKind].name} 등장!`);
     else if (ev) this.ui.banner(`웨이브 ${this.wave} · ${ev.name}\n${ev.desc}`);
     else this.ui.banner(`웨이브 ${this.wave}`);
@@ -689,7 +689,7 @@ export class GameScene extends Phaser.Scene {
       z.setFlipX(dx < 0);
       const spit = z.def.spit;
       z.attacking = edge <= (spit ? spit.keep : z.r + 12);
-      if (this.foes.update(z, dt, edge)) continue; // 돌진 거인이 힘을 모으거나 달려드는 중
+      if (this.foes.update(z, dt, edge)) continue; // 미식축구 거인이 힘을 모으거나 달려드는 중
       if (spit && edge <= spit.keep) {
         z.spitT -= dt * (1 - slow);
         if (z.spitT <= 0) {
@@ -819,7 +819,7 @@ export class GameScene extends Phaser.Scene {
       const a = ALLY[u.id];
       const st = u.st;
       const p = cellPos(i);
-      if (u.frozenUntil > this.t) continue; // 서리 거인에게 얼었다
+      if (u.frozenUntil > this.t) continue; // 소방관 거인의 소화기 거품에 덮였다
       if (a.kind === 'repair') {
         // 시간을 모았다가 1씩 고친다(기지 체력에 소수점이 생기지 않게)
         u.fix = (u.fix || 0) + st.hps * dt;
@@ -1144,7 +1144,7 @@ export class GameScene extends Phaser.Scene {
   // ── 피해와 처치 ──
   hurt(z, amount, opts = {}) {
     if (z.dead || z.puppet) return; // 꼭두각시는 실이 끊길 때까지 다치지 않는다
-    if (this.foes.immune(z)) return; // 그림자 거인이 그림자일 때
+    if (this.foes.immune(z)) return; // 진압 경찰 거인이 방패를 든 동안
     amount *= this.heroes.damageMul(z); // 시간 정지 중이면 더 아프다
     amount *= this.mods.dmg * this.foes.armorMul(z); // 보상 카드 '화력', 철갑
     let crit = false;
@@ -1217,7 +1217,7 @@ export class GameScene extends Phaser.Scene {
     this.zPool.push(z);
   }
 
-  // 비를 부르는 자를 쓰러뜨림 → 엔딩(처음 한 번은 보유 코인 보상). 그 뒤로는 끝없는 밤이 이어진다.
+  // 최초의 감염자를 쓰러뜨림 → 엔딩(처음 한 번은 보유 코인 보상). 그 뒤로는 끝없는 밤이 이어진다.
   finalBossDown() {
     const first = !this.save.story.ending;
     if (first) {

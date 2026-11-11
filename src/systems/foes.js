@@ -1,6 +1,6 @@
 // 20웨이브 이후의 좀비 능력과 웨이브 이변 화면.
 //   철갑(받는 피해 감소) · 분열(쓰러지면 둘로) · 치유(주변 좀비 회복)
-//   돌진 거인(힘을 모았다가 달려듦) · 무덤지기/비를 부르는 자(좀비 소환) · 검은 비(아군 공격 느려짐)
+//   미식축구 거인(힘을 모았다가 달려듦) · 확성기 거인/최초의 감염자(좀비 소환) · 검은 비(아군 공격 느려짐)
 //   이변: 안개 · 폭우 · 붉은 달 등은 화면을 천천히 덮었다 걷는다(번쩍임 없음)
 import * as R from '../core/rules.js';
 
@@ -60,12 +60,12 @@ export class FoeSystem {
     }
   }
 
-  // 그림자 거인이 그림자일 때는 아무 공격도 받지 않는다
+  // 진압 경찰 거인이 방패를 든 동안은 아무 공격도 받지 않는다
   immune(z) {
     return z.ghostUntil > this.s.t;
   }
 
-  // 북소리가 닿는 좀비의 속도 배율
+  // 훈련 교관 거인의 호루라기가 닿는 좀비의 속도 배율
   speedMul(z) {
     let m = z.ghostUntil > this.s.t ? z.def.phase.speed : 1;
     for (const d of this.drummers || []) {
@@ -76,6 +76,11 @@ export class FoeSystem {
 
   // 좀비가 쓰러지거나 사라질 때 따라다니던 그림 치우기
   removed(z) {
+    if (z.shield) {
+      const sh = z.shield;
+      z.shield = null;
+      this.s.tweens.add({ targets: sh, alpha: 0, duration: 300, onComplete: () => sh.destroy() });
+    }
     if (z.drumRing) {
       const r = z.drumRing;
       z.drumRing = null;
@@ -100,14 +105,20 @@ export class FoeSystem {
     if (d.regen && z.hp < z.maxHp) z.hp = Math.min(z.maxHp, z.hp + z.maxHp * d.regen * dt);
     if (z.drumRing) z.drumRing.setPosition(z.x, z.y);
     if (d.phase) {
+      if (z.shield) z.shield.setPosition(z.x + (z.flipX ? -1 : 1) * z.r * 0.9, z.y - z.r * 0.2).setDepth(z.depth + 0.01);
       if (z.ghostUntil > s.t) {
-        if (z.ghostUntil - s.t < dt * 1.5) s.tweens.add({ targets: z, alpha: 1, duration: 300 }); // 천천히 돌아온다
+        if (z.ghostUntil - s.t < dt * 1.5 && z.shield) { // 방패를 천천히 내린다
+          const sh = z.shield;
+          z.shield = null;
+          s.tweens.add({ targets: sh, alpha: 0, duration: 300, onComplete: () => sh.destroy() });
+        }
       } else {
         z.phaseCd -= dt;
         if (z.phaseCd <= 0) {
           z.phaseCd = d.phase.every;
           z.ghostUntil = s.t + d.phase.time;
-          s.tweens.add({ targets: z, alpha: 0.35, duration: 300 }); // 천천히 흐려진다(깜빡임 없음)
+          z.shield = s.add.image(z.x, z.y, 'riotshield').setAlpha(0).setScale(1.3);
+          s.tweens.add({ targets: z.shield, alpha: 0.95, duration: 250 }); // 방패를 든다(깜빡임 없음)
         }
       }
     }
@@ -136,7 +147,7 @@ export class FoeSystem {
     return false;
   }
 
-  // ── 서리 거인: 아군이 있는 칸 하나를 얼린다(얼음이 천천히 덮였다 녹는다) ──
+  // ── 소방관 거인: 아군이 있는 칸 하나를 소화기 거품으로 덮는다(천천히 덮였다 걷힌다) ──
   freezeCell(z) {
     const s = this.s;
     const cand = [];
@@ -147,12 +158,11 @@ export class FoeSystem {
     const time = z.def.frost.time;
     u.frozenUntil = s.t + time;
     const p = s.cellPos(i);
-    const ice = s.add.rectangle(p.x, p.y, 88, 88, 0xbfe9ff, 1).setDepth(6.9).setAlpha(0);
-    ice.setStrokeStyle(3, 0xffffff, 0.8);
-    s.tweens.add({ targets: ice, alpha: 0.5, duration: 300 });
+    const ice = s.add.image(p.x, p.y, 'foam').setDepth(6.9).setAlpha(0);
+    s.tweens.add({ targets: ice, alpha: 0.85, duration: 300 });
     s.tweens.add({ targets: ice, alpha: 0, delay: (time * 1000) / Math.max(1, s.speed) - 300, duration: 300, onComplete: () => ice.destroy() });
     s.snd('impact', p.x);
-    s.ui.toast(`${s.allyName(i)} 칸이 얼었어요!`);
+    s.ui.toast(`${s.allyName(i)} 칸이 소화기 거품에 덮였어요!`);
   }
 
   // ── 치유 좀비: 주변 좀비를 고치고, 옅은 초록 고리가 천천히 퍼진다 ──
@@ -186,7 +196,7 @@ export class FoeSystem {
     s.snd('poof', z.x);
   }
 
-  // ── 돌진 거인: 멈춰서 힘을 모으는 동안 예고선이 보이고, 그다음 기지 쪽으로 빠르게 달려든다 ──
+  // ── 미식축구 거인: 멈춰서 힘을 모으는 동안 예고선이 보이고, 그다음 기지 쪽으로 빠르게 달려든다 ──
   dash(z, dt, edge) {
     const s = this.s;
     const ds = z.def.dash;
@@ -226,7 +236,7 @@ export class FoeSystem {
     return false;
   }
 
-  // ── 비를 부르는 자: 체력이 2/3, 1/3이 되면 검은 비 ──
+  // ── 최초의 감염자: 체력이 2/3, 1/3이 되면 검은 비 ──
   checkBlackRain(z) {
     const br = z.def.blackRain;
     if (!br || z.rainIdx >= br.at.length) return;

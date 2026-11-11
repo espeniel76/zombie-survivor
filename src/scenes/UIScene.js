@@ -155,7 +155,7 @@ export class UIScene extends Phaser.Scene {
     this.game_.addPerk(id);
   }
 
-  // ── 엔딩: 비를 부르는 자를 쓰러뜨림 ──
+  // ── 엔딩: 최초의 감염자를 쓰러뜨림 ──
   ending(first) {
     this.time.delayedCall(900, () => {
       this.scene.pause('Game');

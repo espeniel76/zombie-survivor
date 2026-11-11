@@ -1104,14 +1104,14 @@ export const ZOMBIE_LOOK = {
   splitter: { shirt: '#3e3358', skin: '#a68bc4', pants: '#3a3a44', s: 1.05, deco: 'seam' },
   splitling: { shirt: '#3e3358', skin: '#b9a2d4', pants: '#3a3a44', s: 0.8 },
   healer: { shirt: '#d8dccf', skin: '#8fd2b8', pants: '#3a3a44', s: 1, deco: 'halo' },
-  charger: { shirt: '#7a3a2a', skin: '#8f9e6a', pants: '#2a2a34', s: 2.3, deco: 'horns' },
-  gravedigger: { shirt: '#2e2a38', skin: '#7f9a7a', pants: '#2a2a34', s: 2.3, deco: 'hood' },
-  ironclad: { shirt: '#3a4048', skin: '#7d9468', pants: '#2a2a34', s: 2.4, deco: 'knight' },
-  rainlord: { shirt: '#17151f', skin: '#56685e', pants: '#17151f', s: 2.8, deco: 'rainlord' },
-  spewer: { shirt: '#5a6a2a', skin: '#b8cc4a', pants: '#2a2a34', s: 2.3, deco: 'sack' },
-  shade: { shirt: '#241c34', skin: '#6a6488', pants: '#1a1626', s: 2.3, deco: 'shade' },
-  frostgiant: { shirt: '#3a5a7a', skin: '#a8d4e8', pants: '#2a2a34', s: 2.4, deco: 'frost' },
-  drummer: { shirt: '#6a2a24', skin: '#8fa06a', pants: '#2a2a34', s: 2.4, deco: 'drum' },
+  charger: { shirt: '#b8262e', skin: '#8f9e6a', pants: '#2a2a34', s: 2.3, deco: 'football' },
+  gravedigger: { shirt: '#e0752a', skin: '#7f9a7a', pants: '#2a2a34', s: 2.3, deco: 'megaphone' },
+  ironclad: { shirt: '#5a6440', skin: '#5f6a48', pants: '#2a2a34', s: 2.4, deco: 'bombsuit' },
+  rainlord: { shirt: '#9ab4c4', skin: '#5f7466', pants: '#2a2a34', s: 2.8, deco: 'patient' },
+  spewer: { shirt: '#d8b830', skin: '#d8c040', pants: '#2a2a34', s: 2.3, deco: 'hazmat' },
+  shade: { shirt: '#1f2a44', skin: '#7f9a7a', pants: '#1a1f2a', s: 2.3, deco: 'riot' },
+  frostgiant: { shirt: '#b89a5a', skin: '#8fa06a', pants: '#2a2a34', s: 2.4, deco: 'firefighter' },
+  drummer: { shirt: '#5a6a3a', skin: '#8fa06a', pants: '#2a2a34', s: 2.4, deco: 'sergeant' },
   foreman: { shirt: '#e0752a', skin: '#8a9a6a', pants: '#2a2a34', s: 2.5, deco: 'hardhat' },
 };
 
@@ -1119,25 +1119,72 @@ export const ZOMBIE_LOOK = {
 function zombieDeco(ctx, d, layer) {
   const top = BY - R;
   if (layer === 'back') {
-    if (d === 'hood') { // 무덤지기: 몸 뒤로 늘어진 두건
-      ctx.beginPath(); ctx.ellipse(0, BY - 5, R + 3.5, R + 6, 0, 0, Math.PI * 2); fillStroke(ctx, '#2a2634', 2.2);
+    if (d === 'hazmat') { // 방역복 거인: 등에 멘 약품 통
+      rr(ctx, -R - 6, BY - 22, 14, 30, 6); fillStroke(ctx, '#8a9098', 2.2, '#3a3e44');
+      ctx.fillStyle = '#c8e04a'; ctx.fillRect(-R - 3, BY - 12, 8, 4);
     }
-    if (d === 'sack') { // 산성 거인: 등에 멘 산성 주머니
-      ctx.beginPath(); ctx.ellipse(-R + 2, BY - 8, 13, 16, -0.3, 0, Math.PI * 2); fillStroke(ctx, '#c8e04a', 2.2, '#5a6a1a');
-      ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.beginPath(); ctx.ellipse(-R - 2, BY - 14, 3.5, 5, -0.3, 0, Math.PI * 2); ctx.fill();
-    }
-    if (d === 'shade') { // 그림자 거인: 등 뒤로 흩날리는 너덜한 그림자
-      ctx.beginPath(); ctx.moveTo(-R - 4, BY - 8);
-      for (let k = 0; k <= 6; k++) ctx.lineTo(-R - 4 + k * ((R * 2 + 8) / 6), k % 2 ? 4 : -2);
-      ctx.lineTo(R + 4, BY - 8); ctx.closePath(); fillStroke(ctx, '#1c1628', 2, '#0a0812');
-    }
-    if (d === 'rainlord') { // 비를 부르는 자: 등 뒤의 검은 망토
-      ctx.beginPath(); ctx.moveTo(-R + 2, BY - 14);
-      ctx.quadraticCurveTo(-R - 12, BY + 6, -R - 6, 1); ctx.lineTo(-12, -2); ctx.lineTo(-4, 2); ctx.lineTo(4, -2); ctx.lineTo(12, 2); ctx.lineTo(R + 6, 1);
-      ctx.quadraticCurveTo(R + 12, BY + 6, R - 2, BY - 14); ctx.closePath();
-      fillStroke(ctx, '#1a1724', 2.2, '#000000');
+    if (d === 'patient') { // 최초의 감염자: 굽은 등에 부풀어 오른 몸(매끈한 혹)
+      for (const [x, y, r] of [[-R - 1, BY - 1, 10], [R, BY + 3, 8], [-R + 4, BY + 10, 7]]) {
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); fillStroke(ctx, '#4f6256', 2.2, '#26302a');
+      }
     }
     return;
+  }
+  if (d === 'hazmat') { // 방역복: 얼굴 창(눈은 창 안에 보인다) + 호스
+    rr(ctx, -15, BY - 13, 30, 17, 8); fillStroke(ctx, 'rgba(30,40,46,0.55)', 2, '#8a7a20');
+    ctx.strokeStyle = '#2a2e34'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-R + 2, BY - 2); ctx.quadraticCurveTo(-4, BY + 16, 14, BY + 8); ctx.stroke();
+    ctx.fillStyle = '#5a5e64'; ctx.beginPath(); ctx.arc(0, BY + 12, 3, 0, Math.PI * 2); ctx.fill();
+  }
+  if (d === 'riot') { // 진압 경찰: 남색 헬멧 + 투명 얼굴 가리개
+    ctx.beginPath(); ctx.arc(0, BY, R + 2, Math.PI * 1.08, Math.PI * 1.92); ctx.lineTo(R * 0.92, BY - 9); ctx.lineTo(-R * 0.92, BY - 9); ctx.closePath();
+    fillStroke(ctx, '#1f2a44', 2.2, '#0c1220');
+    rr(ctx, -R + 3, BY - 11, R * 2 - 6, 18, 7); fillStroke(ctx, 'rgba(170,200,230,0.28)', 1.6, 'rgba(200,220,240,0.7)');
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.ellipse(-8, top + 6, 5, 2, -0.4, 0, Math.PI * 2); ctx.fill();
+  }
+  if (d === 'football') { // 미식축구 선수: 헬멧 + 큰 어깨 보호대 + 얼굴 보호 창살
+    for (const sx of [-1, 1]) { ctx.beginPath(); ctx.ellipse(sx * (R - 1), BY + 1, 10, 8, 0, 0, Math.PI * 2); fillStroke(ctx, '#e8e8ea', 2, '#6a6a70'); }
+    ctx.beginPath(); ctx.arc(0, BY, R + 1.5, Math.PI * 1.05, Math.PI * 1.95); ctx.lineTo(R * 0.95, BY - 9); ctx.lineTo(-R * 0.95, BY - 9); ctx.closePath();
+    fillStroke(ctx, '#b8262e', 2.2, '#5a1014');
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(-2, top - 1, 4, 13);
+    ctx.strokeStyle = '#c8ccd2'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-10, BY + 4); ctx.lineTo(16, BY + 4); ctx.moveTo(-6, BY + 9); ctx.lineTo(14, BY + 9); ctx.stroke();
+  }
+  if (d === 'megaphone') { // 확성기 거인: 형광 조끼 + 모자 + 손에 든 확성기
+    ctx.save(); ctx.beginPath(); ctx.arc(0, BY, R - 1.2, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = '#c8ff3a'; ctx.fillRect(-R, BY + 7, R * 2, 3);
+    ctx.restore();
+    ctx.beginPath(); ctx.ellipse(0, BY - 12, R - 2, 4, 0, 0, Math.PI * 2); fillStroke(ctx, '#2a3a5a', 2);
+    ctx.beginPath(); ctx.arc(0, BY - 12, R - 6, Math.PI, Math.PI * 2); ctx.closePath(); fillStroke(ctx, '#2a3a5a', 2);
+    ctx.beginPath(); ctx.moveTo(24, BY + 1); ctx.lineTo(36, BY - 6); ctx.lineTo(36, BY + 14); ctx.lineTo(24, BY + 8); ctx.closePath();
+    fillStroke(ctx, '#f2f2f2', 2, '#5a5a60');
+    ctx.fillStyle = '#d83a3a'; ctx.fillRect(24, BY + 1, 4, 7);
+  }
+  if (d === 'bombsuit') { // 방폭복: 두꺼운 헬멧 + 넓은 얼굴 창 + 가슴 보호판
+    ctx.beginPath(); ctx.arc(0, BY, R + 3, Math.PI * 1.0, Math.PI * 2.0); ctx.lineTo(R + 3, BY - 6); ctx.lineTo(-R - 3, BY - 6); ctx.closePath();
+    fillStroke(ctx, '#6a7448', 2.4, '#2c3020');
+    rr(ctx, -16, BY - 12, 32, 14, 6); fillStroke(ctx, 'rgba(20,26,20,0.5)', 1.8, '#2c3020');
+    rr(ctx, -13, BY + 4, 26, 13, 4); fillStroke(ctx, '#7a8452', 2, '#2c3020');
+  }
+  if (d === 'firefighter') { // 소방관: 빨간 방화 헬멧 + 반사 띠 방화복
+    ctx.save(); ctx.beginPath(); ctx.arc(0, BY, R - 1.2, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = '#e8ec5a'; ctx.fillRect(-R, BY + 8, R * 2, 3);
+    ctx.fillStyle = '#d8dde2'; ctx.fillRect(-R, BY + 11, R * 2, 2);
+    ctx.restore();
+    ctx.beginPath(); ctx.ellipse(0, BY - 9, R + 6, 4.5, 0, 0, Math.PI * 2); fillStroke(ctx, '#c8262a', 2, '#5a0e10');
+    ctx.beginPath(); ctx.arc(0, BY - 9, R - 3, Math.PI, Math.PI * 2); ctx.closePath(); fillStroke(ctx, '#c8262a', 2, '#5a0e10');
+    rr(ctx, -5, top + 3, 10, 9, 2); fillStroke(ctx, '#f2c230', 1.6, '#8a6a10');
+  }
+  if (d === 'sergeant') { // 훈련 교관: 챙 넓은 교관 모자 + 목에 건 호루라기
+    ctx.beginPath(); ctx.ellipse(0, BY - 12, R + 8, 5, 0, 0, Math.PI * 2); fillStroke(ctx, '#7a5a32', 2, '#3a2a14');
+    ctx.beginPath(); ctx.moveTo(-12, BY - 13); ctx.lineTo(-8, top - 2); ctx.lineTo(0, top + 3); ctx.lineTo(8, top - 2); ctx.lineTo(12, BY - 13); ctx.closePath();
+    fillStroke(ctx, '#8a6a3a', 2, '#3a2a14');
+    ctx.strokeStyle = '#d8dde2'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-6, BY + 1); ctx.lineTo(2, BY + 9); ctx.lineTo(8, BY + 1); ctx.stroke();
+    rr(ctx, -1, BY + 8, 8, 5, 2); fillStroke(ctx, '#c8ccd2', 1.4, '#5a5e64');
+  }
+  if (d === 'patient') { // 최초의 감염자: 환자복 끈 + 머리 붕대 + 손목 이름표
+    ctx.strokeStyle = '#7a94a4'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(-4, BY + 4); ctx.lineTo(0, BY + 9); ctx.lineTo(4, BY + 4); ctx.stroke();
+    ctx.strokeStyle = '#e8e4da'; ctx.lineWidth = 4.5; ctx.beginPath(); ctx.arc(0, BY, R - 3, Math.PI * 1.18, Math.PI * 1.82); ctx.stroke();
+    rr(ctx, 20, BY + 2, 6, 7, 1.5); fillStroke(ctx, '#ffffff', 1.4, '#6a6a70');
   }
   if (d === 'helmet') { // 철갑 좀비: 쇠 투구 + 가슴판
     ctx.beginPath(); ctx.arc(0, BY, R + 1.5, Math.PI * 1.1, Math.PI * 1.9); ctx.lineTo(R * 0.95, BY - 10); ctx.lineTo(-R * 0.95, BY - 10); ctx.closePath();
@@ -1159,48 +1206,6 @@ function zombieDeco(ctx, d, layer) {
     ctx.lineWidth = 1.2; ctx.strokeStyle = '#3c7a5a';
     ctx.beginPath(); ctx.ellipse(0, top - 7, 14, 5.5, 0, 0, Math.PI * 2); ctx.stroke();
   }
-  if (d === 'horns') { // 돌진 거인: 굽은 뿔 투구
-    ctx.beginPath(); ctx.arc(0, BY, R + 1, Math.PI * 1.15, Math.PI * 1.85); ctx.lineTo(R * 0.9, BY - 11); ctx.lineTo(-R * 0.9, BY - 11); ctx.closePath();
-    fillStroke(ctx, '#6a4a3a', 2.2);
-    for (const sx of [-1, 1]) {
-      ctx.beginPath(); ctx.moveTo(sx * 14, top + 6); ctx.quadraticCurveTo(sx * 30, top - 2, sx * 26, top - 16); ctx.quadraticCurveTo(sx * 22, top - 4, sx * 8, top + 9); ctx.closePath();
-      fillStroke(ctx, '#e8dcc0', 2, '#7a6a4a');
-    }
-  }
-  if (d === 'hood') { // 무덤지기: 두건 앞자락 + 손에 든 등불
-    ctx.beginPath(); ctx.arc(0, BY, R + 3, Math.PI * 1.02, Math.PI * 1.98); ctx.arc(0, BY - 2, R - 6, Math.PI * 1.92, Math.PI * 1.08, true); ctx.closePath();
-    fillStroke(ctx, '#3a3446', 2.2);
-    ctx.strokeStyle = '#5a5464'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(30, BY + 4); ctx.lineTo(30, BY + 10); ctx.stroke();
-    rr(ctx, 25, BY + 10, 10, 12, 3); fillStroke(ctx, '#ffd27a', 1.8, '#7a5a2a');
-  }
-  if (d === 'knight') { // 철갑 거인: 기사 투구 + 어깨 갑옷(눈은 틈 사이로 보인다)
-    for (const sx of [-1, 1]) { ctx.beginPath(); ctx.ellipse(sx * (R - 2), BY + 2, 9, 7, 0, 0, Math.PI * 2); fillStroke(ctx, '#7a8592', 2, '#363d45'); }
-    ctx.beginPath(); ctx.arc(0, BY, R + 1.5, Math.PI * 1.02, Math.PI * 1.98); ctx.lineTo(R, BY - 9); ctx.lineTo(-R, BY - 9); ctx.closePath();
-    fillStroke(ctx, '#8a95a2', 2.2, '#363d45');
-    ctx.strokeStyle = '#363d45'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, top + 1); ctx.lineTo(0, BY - 10); ctx.stroke();
-    ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.moveTo(-3, top - 1); ctx.quadraticCurveTo(0, top - 14, 6, top - 12); ctx.quadraticCurveTo(2, top - 6, 3, top); ctx.fill();
-  }
-  if (d === 'sack') { // 산성 거인: 입가에 흐르는 산성(눈 아래)과 등 주머니 끈
-    ctx.strokeStyle = '#4a5a1a'; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(-R + 4, BY - 14); ctx.lineTo(R - 6, BY + 6); ctx.stroke();
-    ctx.fillStyle = '#d8f04a'; ctx.beginPath(); ctx.ellipse(11, BY + 9, 3, 4.5, 0, 0, Math.PI * 2); ctx.fill();
-  }
-  if (d === 'shade') { // 그림자 거인: 눈 위까지 덮은 깊은 두건
-    ctx.beginPath(); ctx.arc(0, BY, R + 2.5, Math.PI * 1.02, Math.PI * 1.98); ctx.arc(0, BY - 3, R - 7, Math.PI * 1.9, Math.PI * 1.1, true); ctx.closePath();
-    fillStroke(ctx, '#2a2238', 2.2, '#0a0812');
-    ctx.fillStyle = '#b8a8ff'; ctx.beginPath(); ctx.arc(0, top + 2, 1.8, 0, Math.PI * 2); ctx.fill();
-  }
-  if (d === 'frost') { // 서리 거인: 머리에 솟은 얼음 결정
-    for (const [x, h, w] of [[-10, 14, 5], [0, 20, 6], [10, 13, 5]]) {
-      ctx.beginPath(); ctx.moveTo(x - w, top + 6); ctx.lineTo(x, top + 6 - h); ctx.lineTo(x + w, top + 6); ctx.closePath();
-      fillStroke(ctx, '#dff6ff', 1.8, '#5a9ac0');
-    }
-    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.arc(-6, BY + 8, 2, 0, Math.PI * 2); ctx.arc(6, BY + 12, 1.5, 0, Math.PI * 2); ctx.fill();
-  }
-  if (d === 'drum') { // 북치는 거인: 배에 멘 북 + 머리띠
-    ctx.beginPath(); ctx.ellipse(0, BY + 11, 11, 7, 0, 0, Math.PI * 2); fillStroke(ctx, '#e8d8b8', 2, '#6a4a2a');
-    ctx.strokeStyle = '#a03a2a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(0, BY + 11, 11, 7, 0, Math.PI * 0.1, Math.PI * 0.9); ctx.stroke();
-    ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 3.2; ctx.beginPath(); ctx.arc(0, BY, R - 1, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
-  }
   if (d === 'hardhat') { // 공사장 거인: 노란 안전모 + 형광 띠 작업복
     ctx.save(); ctx.beginPath(); ctx.arc(0, BY, R - 1.2, 0, Math.PI * 2); ctx.clip();
     ctx.fillStyle = '#d8dde2'; ctx.fillRect(-R, BY + 9, R * 2, 3.2);
@@ -1210,15 +1215,6 @@ function zombieDeco(ctx, d, layer) {
     ctx.beginPath(); ctx.arc(0, BY - 10, R - 3, Math.PI, Math.PI * 2); ctx.closePath(); fillStroke(ctx, '#f2c230', 2, '#8a6a10');
     ctx.strokeStyle = '#d8a820'; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(0, top + 3); ctx.lineTo(0, BY - 11); ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.ellipse(-8, top + 7, 4, 2, -0.5, 0, Math.PI * 2); ctx.fill();
-  }
-  if (d === 'rainlord') { // 비를 부르는 자: 검은 왕관 + 머리 위 비구름
-    ctx.beginPath(); ctx.moveTo(-13, top + 5); ctx.lineTo(-14, top - 7); ctx.lineTo(-7, top - 1); ctx.lineTo(0, top - 11); ctx.lineTo(7, top - 1); ctx.lineTo(14, top - 7); ctx.lineTo(13, top + 5); ctx.closePath();
-    fillStroke(ctx, '#1e1b28', 2, '#000000');
-    ctx.fillStyle = '#8a6cff'; ctx.beginPath(); ctx.arc(0, top - 1, 2, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#3a3f4a';
-    for (const [cx, cy, cr] of [[-9, top - 22, 7], [0, top - 26, 9], [10, top - 22, 7]]) { ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2); ctx.fill(); }
-    ctx.strokeStyle = 'rgba(120,135,160,0.8)'; ctx.lineWidth = 1.4;
-    for (const x of [-10, -3, 4, 11]) { ctx.beginPath(); ctx.moveTo(x, top - 15); ctx.lineTo(x - 2, top - 9); ctx.stroke(); }
   }
 }
 
