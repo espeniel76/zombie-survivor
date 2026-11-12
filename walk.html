@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>목업 · 걸어오는 좀비</title>
+  <link rel="icon" href="data:," />
+  <style>
+    body { margin: 0; background: #0b0e12; color: #eef3ea; font-family: 'Malgun Gothic', 'Noto Sans KR', system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 20px 16px 60px; }
+    h1 { font-size: 26px; margin: 0 0 6px; }
+    p.sub { color: #93a39a; margin: 0 0 16px; line-height: 1.55; }
+    h2 { font-size: 20px; margin: 30px 0 10px; }
+    .bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    .bar button { font: inherit; font-weight: bold; font-size: 16px; padding: 10px 16px; border-radius: 12px; border: 0; background: #252d35; color: #cfd8d2; }
+    .bar button.on { background: #9be15d; color: #15200c; }
+    #field { width: 100%; max-width: 720px; border-radius: 14px; display: block; }
+    #cards { display: flex; flex-wrap: wrap; gap: 10px; }
+    .card { background: #10151a; border-radius: 12px; padding: 0 0 10px; text-align: center; flex: 1 1 calc(33% - 10px); min-width: 0; }
+    .card.big { flex-basis: 100%; }
+    .card canvas { display: block; width: 100%; border-radius: 12px 12px 0 0; }
+    .card b { display: block; font-size: 16px; margin-top: 8px; }
+    .card span { color: #93a39a; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>목업 · 걸어오는 좀비</h1>
+    <p class="sub">지금은 좀비 그림 한 장이 미끄러지듯 다가옵니다.<br />
+      새 걸음: 발을 번갈아 들고 디디며(발이 땅에 붙어 미끄러지지 않게), 몸이 출렁이고 좌우로 기웁니다.
+      좀비마다 걸음걸이가 다르고, 덩치·거인은 디딜 때 먼지가 일어납니다(번쩍임·화면 흔들림 없음).</p>
+    <div class="bar">
+      <button id="old">지금 게임</button>
+      <button id="new" class="on">새 걸음</button>
+      <button id="spd">1배속</button>
+    </div>
+    <canvas id="field" width="720" height="1000"></canvas>
+    <h2>좀비마다 다른 걸음걸이</h2>
+    <div id="cards"></div>
+  </main>
+  <script type="module" src="/src/mockup/walk.js"></script>
+</body>
+</html>

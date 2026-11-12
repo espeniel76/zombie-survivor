@@ -6,7 +6,7 @@ import { loadSave, writeSave, TEST } from '../core/save.js';
 import { unlockAudio } from '../core/sfx.js';
 import { W, H, COLOR, text, panel, button, settingsRows, appear, vanish, curtainIn, curtainOut } from '../core/ui.js';
 import { statsLine } from './UIScene.js';
-import { allyView, BODY_OY } from '../render/sprites.js';
+import { allyView, attachLegs, stepLegs } from '../render/sprites.js';
 import { storyPages } from '../core/story-ui.js';
 import { PROLOGUE, CHAPTERS } from '../data/story.js';
 
@@ -27,7 +27,7 @@ export class TitleScene extends Phaser.Scene {
     this.input.once('pointerdown', unlockAudio);
     this.input.keyboard.once('keydown', unlockAudio);
 
-    this.bg = this.add.image(W / 2, H / 2, 'map_road');
+    this.bg = this.add.image(W / 2, H / 2, 'map_road').setDepth(-1); // 좀비 발(살짝 낮은 깊이)이 바닥 위에 오게
     this.walkers = [];
     for (let k = 0; k < 10; k++) this.addWalker(true);
     this.add.rectangle(W / 2, H / 2, W, H, 0x0b0e12, 0.45);
@@ -44,8 +44,10 @@ export class TitleScene extends Phaser.Scene {
     const tex = Phaser.Utils.Array.GetRandom(['z_walker', 'z_walker', 'z_runner', 'z_brute', 'z_spitter']);
     const a = Math.random() * Math.PI * 2;
     const r = anywhere ? Math.random() * 600 : 760;
-    const z = this.add.image(W / 2 + Math.cos(a) * r, H / 2 + Math.sin(a) * r, tex).setAlpha(0.9).setOrigin(0.5, BODY_OY);
+    const z = this.add.image(W / 2 + Math.cos(a) * r, H / 2 + Math.sin(a) * r, tex).setAlpha(0.9);
     z.speed = 20 + Math.random() * 25;
+    z.setFlipX(Math.cos(a) > 0);
+    attachLegs(this, z, tex.slice(2));
     this.walkers.push(z);
   }
 
@@ -58,7 +60,10 @@ export class TitleScene extends Phaser.Scene {
       if (Math.hypot(z.x - W / 2, z.y - H / 2) < 40) {
         const b = Math.random() * Math.PI * 2;
         z.setPosition(W / 2 + Math.cos(b) * 760, H / 2 + Math.sin(b) * 760);
+        z.lx = z.x;
+        z.ly = z.y;
       }
+      stepLegs(z, dt / 1000, true);
     }
   }
 

@@ -994,12 +994,18 @@ export function drawPerson(ctx, x, y, s, o, part = 'all') {
       }
     }
   }
-  // 부드러운 그림자
-  const sh = ctx.createRadialGradient(0, 0, 2, 0, 0, 20);
-  sh.addColorStop(0, 'rgba(0,0,0,0.38)');
-  sh.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.save(); ctx.scale(1, 0.3); ctx.fillStyle = sh;
-  ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  // o.legs === false: 그림자와 발은 빼고 몸만(좀비는 발을 따로 그려 걷게 한다, drawLegs)
+  if (o.legs !== false) shadowAt(ctx);
+  // 걷기(목업용): 발은 땅을 딛고, 몸은 몸 중심을 축으로 출렁이고 기운다(게임의 좀비와 같은 움직임)
+  // o.walk = { feet: [[dx, dy], [dx, dy]], dy, rot, sx, sy }
+  const w = o.walk;
+  const lift = () => {
+    if (!w) return;
+    ctx.save();
+    ctx.translate(0, BY + (w.dy || 0)); ctx.rotate(w.rot || 0); ctx.scale(w.sx || 1, w.sy || 1); ctx.translate(0, -BY);
+  };
+  const drop = () => { if (w) ctx.restore(); };
+  lift();
   // 화염방사기 연료통(등 뒤)
   if (o.gun === 'flame') { rr(ctx, -27, -36, 11, 22, 4); fillStroke(ctx, '#e2701f'); }
   if (o.hero && o.outfit) heroOutfit(ctx, o.hero, 'back');
@@ -1008,9 +1014,9 @@ export function drawPerson(ctx, x, y, s, o, part = 'all') {
   const body = o.zombie ? o.skin : o.shirt;
   const edge = shade(body, -0.6);
   // 작은 발 두 개
-  for (const fx of [-8, 8]) {
-    ctx.beginPath(); ctx.ellipse(fx, -2.5, 6, 4, 0, 0, Math.PI * 2); fillStroke(ctx, shade(body, -0.35), 2, edge);
-  }
+  drop();
+  if (o.legs !== false) feetAt(ctx, body, w ? w.feet : null);
+  lift();
   // 몸(동그라미): 왼쪽 위에서 빛을 받는 그라데이션
   const grad = ctx.createRadialGradient(-7, BY - 9, 2, 0, BY, R * 1.25);
   grad.addColorStop(0, shade(body, 0.38));
@@ -1071,6 +1077,35 @@ export function drawPerson(ctx, x, y, s, o, part = 'all') {
     hand(ctx, o.shirt);
     ctx.restore();
   }
+  drop();
+  ctx.restore();
+}
+
+// 발밑 그림자
+function shadowAt(ctx) {
+  const sh = ctx.createRadialGradient(0, 0, 2, 0, 0, 20);
+  sh.addColorStop(0, 'rgba(0,0,0,0.38)');
+  sh.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.save(); ctx.scale(1, 0.3); ctx.fillStyle = sh;
+  ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+}
+
+// 작은 발 두 개. offs = [[앞뒤, 높이], [앞뒤, 높이]] (걷는 중의 발 위치)
+function feetAt(ctx, body, offs) {
+  const edge = shade(body, -0.6);
+  [-8, 8].forEach((fx, k) => {
+    const [ox, oy] = offs ? offs[k] : [0, 0];
+    ctx.beginPath(); ctx.ellipse(fx + ox, -2.5 + oy, 6, 4, 0, 0, Math.PI * 2); fillStroke(ctx, shade(body, -0.35), 2, edge);
+  });
+}
+
+// 좀비의 그림자 + 발만(걷는 그림 한 장면). (x, y) = 발밑, 바라보는 쪽은 오른쪽
+export function drawLegs(ctx, x, y, s, o, offs) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+  shadowAt(ctx);
+  feetAt(ctx, o.zombie ? o.skin : o.shirt, offs);
   ctx.restore();
 }
 

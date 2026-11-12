@@ -8,7 +8,7 @@ import { loadSave, writeSave, TEST } from '../core/save.js';
 import { sfx } from '../core/sfx.js';
 import { W, H, FONT, josa } from '../core/ui.js';
 import { TIERS } from '../data/allies.js';
-import { allyView, BODY_OY } from '../render/sprites.js';
+import { allyView, attachLegs, stepLegs } from '../render/sprites.js';
 import { HeroSystem, PASSIVE_HEROES } from '../systems/heroes.js';
 import { chapterAt } from '../data/story.js';
 import { FoeSystem } from '../systems/foes.js';
@@ -407,6 +407,7 @@ export class GameScene extends Phaser.Scene {
       if (z.dead) continue;
       z.dead = true;
       z.setVisible(false).setActive(false);
+      z.legs?.setVisible(false);
       this.foes.removed(z);
       this.zPool.push(z);
     }
@@ -637,7 +638,9 @@ export class GameScene extends Phaser.Scene {
     z.tornadoHit = 0;
     const size = def.boss ? 1 : m.zSize;
     z.r = def.radius * size;
-    z.setOrigin(0.5, BODY_OY).setRotation(0).setScale(size).setFlipX(Math.cos(a + Math.PI) < 0);
+    z.setFlipX(Math.cos(a + Math.PI) < 0);
+    attachLegs(this, z, kind, size);
+    z.walked = false;
     this.foes.spawned(z);
     this.zombies.push(z);
     if (def.boss) {
@@ -651,10 +654,32 @@ export class GameScene extends Phaser.Scene {
     // 배속이 높거나 프레임이 느려도 총알이 좀비를 건너뛰지 않게 잘게 나눠 돌린다
     // timeWarp: 영웅 등장·각성 장면에서 잠깐 느려지는 시간
     let left = (Math.min(deltaMs, 50) / 1000) * this.speed * (this.timeWarp ?? 1);
+    const frameDt = left;
     while (left > 0 && this.phase !== 'over') {
       const dt = Math.min(left, 0.02);
       left -= dt;
       this.step(dt);
+    }
+    if (this.phase !== 'over') this.walkZombies(frameDt);
+  }
+
+  // 좀비 발걸음(그림만): 실제로 걸은 거리만큼 발을 내딛는다. 얼거나 잠들거나 돌이 된 좀비는 그 자세로 멈춘다.
+  walkZombies(dt) {
+    const t = this.t;
+    const stomp = (x, y, k) => this.stepDust(x, y, k);
+    for (const z of this.zombies) {
+      if (z.dead) continue;
+      const hold = z.frozenUntil > t || z.sleepUntil > t || !!z.petrified;
+      stepLegs(z, dt, z.walked, hold, stomp);
+      z.walked = false;
+    }
+  }
+
+  // 덩치·거인이 땅을 디딜 때 이는 흙먼지(옅게 퍼지기만, 번쩍임 없음)
+  stepDust(x, y, k) {
+    for (const side of [-1, 1]) {
+      const p = this.add.image(x + side * 3 * k, y, 'smoke').setDepth(4.9).setTint(0xb8ae9a).setAlpha(0.35).setScale(0.07 * k, 0.04 * k);
+      this.tweens.add({ targets: p, x: p.x + side * 9 * k, scaleX: 0.2 * k, scaleY: 0.1 * k, alpha: 0, duration: 520, ease: 'Quad.Out', onComplete: () => p.destroy() });
     }
   }
 
@@ -714,11 +739,17 @@ export class GameScene extends Phaser.Scene {
       const edge = Math.max(Math.abs(dx), Math.abs(dy)) - HALF;
       z.setDepth((z.def.boss ? 5.5 : 5) + z.y * 1e-5);
       // 영웅 능력에 붙잡힌 좀비(정지·중력장·밀려남·꼭두각시)는 스스로 못 움직인다
-      if (this.heroes.controls(z, dt)) continue;
+      if (this.heroes.controls(z, dt)) {
+        if (z.puppet) z.walked = true; // 꼭두각시는 제 발로 걸어가 싸운다
+        continue;
+      }
       z.setFlipX(dx < 0);
       const spit = z.def.spit;
       z.attacking = edge <= (spit ? spit.keep : z.r + 12);
-      if (this.foes.update(z, dt, edge)) continue; // 배달 기사 거인이 힘을 모으거나 달려드는 중
+      if (this.foes.update(z, dt, edge)) { // 배달 기사 거인이 힘을 모으거나 달려드는 중
+        z.walked = true;
+        continue;
+      }
       if (spit && edge <= spit.keep) {
         z.spitT -= dt * (1 - slow);
         if (z.spitT <= 0) {
@@ -741,6 +772,7 @@ export class GameScene extends Phaser.Scene {
       const v = z.def.speed * this.mods.zSpeed * this.foes.speedMul(z) * (1 - slow) * (1 - this.heroes.globalSlow) * dt;
       z.x += (dx / d) * v;
       z.y += (dy / d) * v;
+      z.walked = true;
     }
     // 서로 겹치지 않게 밀어내기
     for (let i = 0; i < zs.length; i++) {
@@ -1243,6 +1275,7 @@ export class GameScene extends Phaser.Scene {
     z.plague = null;
     z.puppet = null;
     z.setVisible(false).setActive(false);
+    z.legs?.setVisible(false);
     this.zPool.push(z);
   }
 
