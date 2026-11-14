@@ -37,6 +37,10 @@ export function buildCharacterTextures(scene) {
     const look = { ...ZOMBIE_LOOK[kind], zombie: true, aim: 0 };
     // 몸(발 없이) + 발 그림 여러 장(걷는 한 바퀴 WALK_FRAMES장 + 서 있는 1장)
     canvasTexture(scene, `z_${kind}`, BOX.l + BOX.r, BOX.t + BOX.b, zs, ctx => drawPerson(ctx, BOX.l * zs, BOX.t * zs, zs, { ...look, legs: false }));
+    // 금빛 좀비(황금 열쇠를 떨어뜨림): 몸만 금색, 눈은 그대로 하얗게
+    if (!['boss', 'charger', 'gravedigger', 'ironclad', 'rainlord', 'spewer', 'shade', 'frostgiant', 'drummer', 'foreman'].includes(kind)) {
+      canvasTexture(scene, `z_${kind}_gold`, BOX.l + BOX.r, BOX.t + BOX.b, zs, ctx => drawPerson(ctx, BOX.l * zs, BOX.t * zs, zs, { ...look, skin: '#f2c230', shirt: '#b8860b', legs: false }));
+    }
     const key = `zl_${kind}`;
     const fw = Math.ceil((LBOX.l + LBOX.r) * zs);
     const fh = Math.ceil((LBOX.t + LBOX.b) * zs);

@@ -10,6 +10,7 @@ export const TIERS = [
   { name: '영웅', color: 0x9b30ff, text: '#b56dff', price: 1000 },
   { name: '전설', color: 0xff8800, text: '#ffa33a', price: 2500 },
   { name: '신화', color: 0xff1f1f, text: '#ff4d4d', price: 6000 },
+  { name: '이터널', color: 0xffd84a, text: '#ffe680', price: 15000 }, // 신화 다음 등급(전설 상자에서만)
 ];
 
 const A = (id, name, tier, kind, stats, look, desc, priceMul = 1) => ({
@@ -67,6 +68,11 @@ export const ALLIES = [
   A('shadowlord', '그림자 군주', 5, 'sweep', { dmg: 18, rate: 6, range: 300, spin: 1.2, width: 0.32 }, { shirt: 0x1a1424, gun: 'scepter', glow: 0x8a5cff }, '그림자 칼날이 기지를 돌며 벱니다.'),
   A('phoenix', '불사조 기사', 5, 'phoenix', { dmg: 30, rate: 1.2, range: 400, pierce: 2, speed: 700, heal: 0.4, burst: 150, radius: 260, trigger: 0.3 }, { shirt: 0xe2582a, gun: 'flamesword', glow: 0xffa040 }, '기지가 위험할 때 불꽃으로 되살립니다.'),
   A('tornado', '회오리 술사', 5, 'tornado', { dmg: 25, rate: 0.2, range: 420, speed: 150, life: 3.5, radius: 52 }, { shirt: 0x7a9ab0, gun: 'fan', glow: 0xd7eef8 }, '회오리로 좀비를 휩쓸어 버립니다.'),
+  // ── 전설 상자에서만 나오는 신화(box: true) ──
+  A('emperor', '죽음의 황제', 5, 'doom', { dmg: 60, rate: 0.35, range: 480, marks: 3, pct: 0.3, bossPct: 0.06, delay: 2 }, { shirt: 0x1a1020, gun: 'scepter', glow: 0x9a3aff }, '가장 센 좀비 셋에게 죽음을 선고합니다.'),
+  A('goldlord', '영원한 황금의 군주', 5, 'goldrain', { dmg: 26, rate: 0.25, range: 460, radius: 120, time: 3, coinMul: 2 }, { shirt: 0xe8b923, gun: 'orb', glow: 0xffd84a }, '황금비를 내려 맞은 좀비의 코인을 두 배로.'),
+  // ── 이터널: 전설 상자 1% ──
+  A('guardian', '영원한 황금의 수호신', 6, 'guardian', { dmg: 130, rate: 1.1, range: 520, spears: 5, guard: 0.4, revive: 0.2 }, { shirt: 0xfff0b0, gun: 'staff', glow: 0xffe066 }, '황금 창으로 다섯을 꿰뚫고, 기지가 무너질 때 한 번 되살립니다.'),
   A('plague', '역병 의사', 5, 'plague', { dmg: 16, rate: 1, range: 340, time: 4, spread: 95, speed: 520 }, { shirt: 0x22262c, gun: 'lantern', glow: 0x7fdc4a }, '쓰러진 좀비가 역병을 옮깁니다.'),
 ];
 
@@ -92,7 +98,12 @@ export const HEROES = {
   shadowlord: { role: '그림자 칼날', quote: '빛이 닿지 않는 곳은 전부 내 땅이다.' },
   phoenix: { role: '부활', quote: '재가 되어도, 다시 타오른다.' },
   tornado: { role: '회오리', quote: '바람이 데려가는 곳이 너희 무덤이야.' },
+  emperor: { role: '죽음의 선고', quote: '이름을 불렀다. 이제 끝이다.' },
+  goldlord: { role: '황금비', quote: '내 비에 젖는 자는 모두 금이 된다.' },
+  guardian: { role: '황금 결계', quote: '영원히. 이 아홉 칸이 서 있는 한.' },
 };
+// 전설 상자에서만 나오는 영웅(메인 상점에는 없다)
+export const BOX_ONLY = new Set(['emperor', 'goldlord', 'guardian']);
 for (const a of ALLIES) {
   const h = HEROES[a.id];
   if (h) Object.assign(a, { role: h.role, quote: h.quote, hero: true });

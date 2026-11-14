@@ -47,6 +47,9 @@ export function statsLine(kind, st) {
     case 'puppet': return `${sec}초마다 1마리 조종 · ${st.time}초 · 한 대 ${st.dmg}`;
     case 'timestop': return `${sec}초마다 ${st.time}초 정지 · 정지 중 피해 +${pct(st.vuln)} · 모두 ${pct(st.slowAll)} 느림`;
     case 'plague': return `초당 ${st.dmg} 역병 · 쓰러지면 주변으로 전염`;
+    case 'doom': return `${sec}초마다 센 좀비 ${st.marks}마리 선고 · ${st.delay}초 뒤 최대 체력 ${pct(st.pct)} + ${st.dmg}`;
+    case 'goldrain': return `${sec}초마다 황금비 ${st.time}초 · 초당 ${st.dmg * 4} · 코인 ${st.coinMul}배`;
+    case 'guardian': return `황금 창 ${st.spears}개 × ${st.dmg} · 기지 피해 -${pct(st.guard)} · 판마다 한 번 기지 부활`;
     default: break;
   }
   const parts = [`피해 ${num(st.dmg)}${st.count > 1 ? ` ×${st.count}` : ''}`, `초당 ${num(st.rate)}회`];
@@ -190,10 +193,16 @@ export class UIScene extends Phaser.Scene {
     // 보유 코인(좀비가 떨어뜨린 코인이 날아와 쌓인다)
     this.walletText = text(this, 700, 88, '', 20, '#ffe08a', { ox: 1, strokeThickness: 4 });
     this.walletIcon = this.add.image(0, 88, 'item_coin').setScale(0.9);
+    this.keyText = text(this, 0, 88, '', 20, '#ffe680', { ox: 1, strokeThickness: 4 });
+    this.keyIcon = this.add.image(0, 88, 'item_key').setScale(0.8);
     this.coinFly = [];
+    const mode = this.game_.mode;
+    if (mode) text(this, W / 2, 210, mode === 'rush' ? '주말 보스 러시 · 보스마다 황금 열쇠 +2' : `오늘의 도전 · ${this.game_.daily.name} · ${this.game_.daily.goal}웨이브를 막으면 황금 열쇠 +${R.DAILY_KEYS}`, 20, '#ffe680', { strokeThickness: 4 }).setDepth(40);
     if (this.preview) {
       this.walletText.setVisible(false);
       this.walletIcon.setVisible(false);
+      this.keyText.setVisible(false);
+      this.keyIcon.setVisible(false);
       const a = this.preview;
       const t = TIERS[a.tier];
       this.waveText.setText(a.name).setColor(t.text);
@@ -222,6 +231,19 @@ export class UIScene extends Phaser.Scene {
   }
 
   // 좀비가 떨어뜨린 코인: 살짝 튀어 올랐다가 위쪽 '보유' 숫자로 날아간다(깜빡임 없음)
+  // 금빛 좀비가 떨어뜨린 황금 열쇠: 조금 크게 튀어 올랐다가 위쪽 열쇠 숫자로(깜빡임 없음)
+  dropKey(x, y) {
+    const img = this.add.image(x, y, 'item_key').setDepth(31).setScale(1.3);
+    this.tweens.add({
+      targets: img, y: y - 40, duration: 260, ease: 'Quad.Out',
+      onComplete: () => this.tweens.add({
+        targets: img, x: this.keyIcon.x, y: this.keyIcon.y, scale: 0.8, duration: 600, delay: 160, ease: 'Cubic.In',
+        onComplete: () => img.destroy(),
+      }),
+    });
+    sfx('coin');
+  }
+
   dropCoin(x, y, n) {
     const flying = this.coinFly.filter(c => c.active).length;
     if (flying > 24) return; // 한꺼번에 너무 많으면 그림만 생략(코인은 이미 더해짐)
@@ -295,6 +317,8 @@ export class UIScene extends Phaser.Scene {
     this.coinIcon.x = 700 - this.coinText.width - 22;
     this.walletText.setText(`보유 ${R.formatNum(this.save.coins || 0)}`);
     this.walletIcon.x = 700 - this.walletText.width - 16;
+    this.keyText.setText(R.formatNum(this.save.keys || 0)).setX(this.walletIcon.x - 22);
+    this.keyIcon.x = this.keyText.x - this.keyText.width - 14;
     this.skipBtn.setVisible(g.phase === 'break');
     this.bossBtn?.setVisible(g.phase === 'wave');
     this.updateHpBar(g);
@@ -475,9 +499,9 @@ export class UIScene extends Phaser.Scene {
     this.shopSig = this.shopSignature();
     this.shopTabs.removeAll(true);
     TIERS.forEach((t, k) => {
-      const x = W / 2 + (k - 2.5) * 108;
+      const x = W / 2 + (k - (TIERS.length - 1) / 2) * 94;
       const sel = k === this.shopTier;
-      const b = button(this, x, 260, 100, 58, t.name, () => {
+      const b = button(this, x, 260, 88, 58, t.name, () => {
         this.shopTier = k;
         this.shopPage = 0;
         this.refreshShop();
@@ -514,11 +538,16 @@ export class UIScene extends Phaser.Scene {
       c.add(text(this, 176, y + 26, a.desc, 19, COLOR.text, { ox: 0, strokeThickness: 0, bold: false, align: 'left' }));
       c.add(text(this, 176, y + 52, statsLine(a.kind, R.allyStats(a.id, 1)), 16, COLOR.dim, { ox: 0, strokeThickness: 0, bold: false, align: 'left' }));
       const locked = !R.isUnlocked(this.save, a.id);
-      const can = !locked && g.coins >= a.price && empty > 0;
-      const label = locked ? '잠김' : empty === 0 ? '빈 칸 없음' : `${R.formatNum(a.price)}코인`;
+      const banned = !g.tierAllowed(a.tier);
+      const can = !locked && !banned && g.coins >= a.price && empty > 0;
+      const label = banned ? '오늘은 못 씀' : locked ? '잠김' : empty === 0 ? '빈 칸 없음' : `${R.formatNum(a.price)}코인`;
       const b = button(this, 614, y, 132, 76, label, () => {
+        if (banned) {
+          this.toast(`오늘의 도전: ${g.daily.desc}`);
+          return;
+        }
         if (locked) {
-          this.toast(`메인 화면 상점에서 ${R.formatNum(R.MYTHIC_UNLOCK)}코인으로 해금해요`);
+          this.toast(g.boxOnly(a.id) ? `이벤트의 전설 상자에서 얻을 수 있어요` : `메인 화면 상점에서 ${R.formatNum(R.MYTHIC_UNLOCK)}코인으로 해금해요`);
           return;
         }
         if (!can) {
@@ -629,15 +658,22 @@ export class UIScene extends Phaser.Scene {
   }
 
   // ── 결과 ──
-  showResult({ wave, cleared, kills, newBest, runCoins = 0, bestWave = 0 }) {
+  showResult({ wave, cleared, kills, newBest, runCoins = 0, bestWave = 0, runKeys = 0, mode = null, rushKills = 0, best = 0 }) {
     const c = this.openModal(false);
-    c.add(panel(this, W / 2, H / 2, 620, 700));
-    c.add(text(this, W / 2, H / 2 - 270, '기지가 무너졌어요', 44, '#ff8a80'));
-    c.add(text(this, W / 2, H / 2 - 190, `웨이브 ${wave}에서 쓰러짐`, 30, COLOR.text));
-    c.add(text(this, W / 2, H / 2 - 110, `막아낸 웨이브  ${cleared}`, 30, COLOR.greenText));
-    c.add(text(this, W / 2, H / 2 - 60, `처치한 좀비  ${R.formatNum(kills)}`, 30, COLOR.text));
-    c.add(text(this, W / 2, H / 2 + 0, newBest ? '최고 기록!' : `최고 기록  웨이브 ${bestWave}`, 30, newBest ? COLOR.orangeText : COLOR.dim));
-    c.add(text(this, W / 2, H / 2 + 56, `주운 코인 +${R.formatNum(runCoins)}  ·  보유 ${R.formatNum(this.save.coins || 0)}`, 26, '#ffe08a'));
+    c.add(panel(this, W / 2, H / 2, 620, 720));
+    c.add(text(this, W / 2, H / 2 - 280, '기지가 무너졌어요', 44, '#ff8a80'));
+    if (mode === 'rush') {
+      c.add(text(this, W / 2, H / 2 - 190, '주말 보스 러시', 30, '#ffe680'));
+      c.add(text(this, W / 2, H / 2 - 120, `쓰러뜨린 보스  ${rushKills}`, 34, COLOR.greenText));
+      c.add(text(this, W / 2, H / 2 - 50, `최고 기록  보스 ${best}`, 28, COLOR.dim));
+    } else {
+      c.add(text(this, W / 2, H / 2 - 200, mode === 'daily' ? `오늘의 도전 · 웨이브 ${wave}에서 쓰러짐` : `웨이브 ${wave}에서 쓰러짐`, 28, COLOR.text));
+      c.add(text(this, W / 2, H / 2 - 130, `막아낸 웨이브  ${cleared}`, 30, COLOR.greenText));
+      c.add(text(this, W / 2, H / 2 - 80, `처치한 좀비  ${R.formatNum(kills)}`, 30, COLOR.text));
+      if (!mode) c.add(text(this, W / 2, H / 2 - 24, newBest ? '최고 기록!' : `최고 기록  웨이브 ${bestWave}`, 30, newBest ? COLOR.orangeText : COLOR.dim));
+    }
+    c.add(text(this, W / 2, H / 2 + 30, `주운 코인 +${R.formatNum(runCoins)}  ·  보유 ${R.formatNum(this.save.coins || 0)}`, 24, '#ffe08a'));
+    c.add(text(this, W / 2, H / 2 + 70, `황금 열쇠 +${runKeys}  ·  보유 ${R.formatNum(this.save.keys || 0)}`, 24, '#ffe680'));
     c.add(button(this, W / 2, H / 2 + 140, 400, 88, '다시 하기', () => curtainOut(this, () => {
       this.modal = null;
       this.game_.scene.restart();

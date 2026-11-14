@@ -7,6 +7,7 @@ const KEY = TEST ? 'zombie-survivor-test-v1' : 'zombie-survivor-save-v1';
 
 const DEFAULTS = () => ({
   coins: 0,
+  keys: 0, // 황금 열쇠
   meta: {},
   best: { wave: 0, kills: 0 },
   // 이야기: 프롤로그를 봤는지, 본 장(웨이브 번호)
@@ -37,10 +38,11 @@ export function loadSave() {
     // 저장소를 못 쓰면 기본값으로
   }
   if (TEST) {
-    data.meta.unlocked = ALLIES.filter(a => a.tier === 5).map(a => a.id);
+    data.meta.unlocked = data.meta.unlocked?.length ? data.meta.unlocked : ALLIES.filter(a => a.tier === 5 && !['emperor', 'goldlord'].includes(a.id)).map(a => a.id);
     data.meta.map2 = true;
     data.story.prologue = true;
     data.coins = Math.max(data.coins || 0, 99999);
+    data.keys = Math.max(data.keys || 0, 500);
   }
   cache = data;
   return cache;

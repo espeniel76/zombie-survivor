@@ -423,6 +423,42 @@ export class BootScene extends Phaser.Scene {
         for (let k = 0; k < 4; k++) { const nx = x + (m() - 0.5) * 44; const ny = y + (m() - 0.5) * 44; g.lineBetween(x, y, nx, ny); x = nx; y = ny; }
       }
     });
+    // 황금 열쇠
+    this.make_('item_key', 30, 16, (g) => {
+      g.fillStyle(0xffd84a, 1);
+      g.lineStyle(2, 0x8a6410, 1);
+      g.fillCircle(8, 8, 6.5);
+      g.strokeCircle(8, 8, 6.5);
+      g.fillStyle(0x8a6410, 1);
+      g.fillCircle(8, 8, 2.4);
+      g.fillStyle(0xffd84a, 1);
+      g.fillRect(13, 6, 15, 4);
+      g.strokeRect(13, 6, 15, 4);
+      g.fillRect(22, 9, 3, 5);
+      g.fillRect(26, 9, 2, 4);
+    });
+    // 전설 상자(금 테두리 보물 상자)
+    this.make_('chest', 160, 130, (g) => {
+      g.fillStyle(0x000000, 0.3);
+      g.fillEllipse(80, 122, 150, 16);
+      g.fillStyle(0x7a3a1a, 1);
+      g.lineStyle(4, 0x2a1408, 1);
+      g.fillRoundedRect(12, 50, 136, 70, 8);
+      g.strokeRoundedRect(12, 50, 136, 70, 8);
+      g.fillStyle(0x9a4a22, 1);
+      g.fillRoundedRect(8, 14, 144, 44, { tl: 30, tr: 30, bl: 4, br: 4 });
+      g.strokeRoundedRect(8, 14, 144, 44, { tl: 30, tr: 30, bl: 4, br: 4 });
+      g.fillStyle(0xffd84a, 1);
+      g.lineStyle(2, 0x8a6410, 1);
+      for (const x of [30, 122]) { g.fillRect(x - 6, 16, 12, 102); g.strokeRect(x - 6, 16, 12, 102); }
+      g.fillRect(8, 50, 144, 10);
+      g.strokeRect(8, 50, 144, 10);
+      g.fillRoundedRect(64, 46, 32, 30, 5);
+      g.strokeRoundedRect(64, 46, 32, 30, 5);
+      g.fillStyle(0x2a1408, 1);
+      g.fillCircle(80, 58, 4);
+      g.fillRect(78, 58, 4, 10);
+    });
     // 진압 경찰 거인의 방패(투명한 진압 방패)
     this.make_('riotshield', 30, 64, (g) => {
       g.fillStyle(0x9ec8f0, 0.45);

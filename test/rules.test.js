@@ -4,6 +4,7 @@ import {
   neighbors, upgradeCost, sellPrice, rateBuffAt, allyStats, hpMul, waveSpec, pickZombie,
   zombieHp, isBossWave, dropCoins, isUnlocked, unlockMythic, MYTHIC_UNLOCK,
   bossKind, waveEvent, EVENTS, FINAL_WAVE, MAPS, mapUnlocked,
+  openBox, BOX_PRICE, dailyFor, DAILY, isWeekend, shopMythics,
 } from '../src/core/rules.js';
 import { rollPerks, perkMods } from '../src/data/perks.js';
 import { ALLIES, ALLY, TIERS, MAX_ALLY_LEVEL } from '../src/data/allies.js';
@@ -21,7 +22,7 @@ describe('3×3 칸', () => {
 
 describe('아군 목록', () => {
   it('일반~전설은 5명씩, 신화는 15명, 모두 이름과 설명이 있다', () => {
-    TIERS.forEach((_, t) => expect(ALLIES.filter(a => a.tier === t)).toHaveLength(t === 5 ? 15 : 5));
+    TIERS.forEach((_, t) => expect(ALLIES.filter(a => a.tier === t)).toHaveLength(t === 5 ? 17 : t === 6 ? 1 : 5));
     for (const a of ALLIES) {
       expect(a.name).toBeTruthy();
       expect(a.desc).toBeTruthy();
@@ -74,10 +75,10 @@ describe('강화와 판매', () => {
 });
 
 describe('전설·신화 영웅', () => {
-  it('20명 모두 서로 다른 전투 방식(kind)을 가진다', () => {
+  it('23명 모두 서로 다른 전투 방식(kind)을 가진다', () => {
     const heroes = ALLIES.filter(a => a.hero);
-    expect(heroes).toHaveLength(20);
-    expect(new Set(heroes.map(a => a.kind)).size).toBe(20);
+    expect(heroes).toHaveLength(23);
+    expect(new Set(heroes.map(a => a.kind)).size).toBe(23);
     for (const a of heroes) {
       expect(a.role, a.id).toBeTruthy();
       expect(a.quote, a.id).toBeTruthy();
@@ -211,5 +212,41 @@ describe('맵', () => {
   it('두 번째 맵은 더 어렵지만 코인을 더 준다', () => {
     expect(MAPS.mall.hp).toBeGreaterThan(MAPS.field.hp);
     expect(MAPS.mall.coin).toBeGreaterThan(MAPS.field.coin);
+  });
+});
+
+describe('황금 열쇠 이벤트', () => {
+  const fresh = keys => ({ keys, coins: 0, meta: {} });
+  it('열쇠가 50개 안 되면 상자를 못 연다', () => {
+    const s = fresh(BOX_PRICE - 1);
+    expect(openBox(s)).toBe(null);
+    expect(s.keys).toBe(BOX_PRICE - 1);
+  });
+  it('1%는 이터널 영원한 황금의 수호신', () => {
+    const s = fresh(BOX_PRICE);
+    expect(openBox(s, () => 0.005)).toEqual({ type: 'hero', id: 'guardian' });
+    expect(s.keys).toBe(0);
+    expect(s.meta.unlocked).toContain('guardian');
+  });
+  it('상자 신화가 이미 있으면 보유 코인 2000', () => {
+    const s = fresh(BOX_PRICE * 2);
+    openBox(s, () => 0.1);
+    expect(openBox(s, () => 0.1)).toEqual({ type: 'dup', id: 'emperor', coins: 2000 });
+  });
+  it('나머지는 보유 코인', () => {
+    const s = fresh(BOX_PRICE);
+    const r = openBox(s, () => 0.9);
+    expect(r.type).toBe('coins');
+    expect(s.coins).toBe(r.coins);
+  });
+  it('메인 상점 신화에는 상자 전용이 없다', () => {
+    expect(shopMythics().map(a => a.id)).not.toContain('emperor');
+    expect(shopMythics()).toHaveLength(15);
+  });
+  it('오늘의 도전은 날짜마다 정해지고, 주말 판별', () => {
+    expect(DAILY).toContain(dailyFor(new Date(2026, 10, 14)));
+    expect(dailyFor(new Date(2026, 10, 14))).toBe(dailyFor(new Date(2026, 10, 14, 23)));
+    expect(isWeekend(new Date(2026, 10, 14))).toBe(true); // 토요일
+    expect(isWeekend(new Date(2026, 10, 16))).toBe(false);
   });
 });

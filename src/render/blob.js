@@ -369,6 +369,9 @@ const OUTFIT = {
   shadowlord: { coat: '#1a1424', inner: '#8a5cff', v: 10, trim: '#8a5cff', collar: '#1a1424', cape: ['#120c1a', '#5a2a8a'] },
   phoenix: { coat: '#c8401a', inner: '#ffd84a', v: 8, ridge: true, trim: '#ffd84a', pauldron: ['#e8b923', '#ffd84a'], belt: ['#5a2a10', '#ffd84a'] },
   tornado: { coat: '#6a4a30', inner: '#d7eef8', v: 8, zipper: '#d7dde2', fur: '#f0e8d8' },
+  emperor: { coat: '#1a1020', inner: '#9a3aff', v: 11, trim: '#d8b84a', lapel: '#2a1830', cape: ['#120a18', '#6a1a8a'] },
+  goldlord: { coat: '#c8961a', inner: '#fff3c0', v: 10, trim: '#fff3c0', belt: ['#8a6410', '#fff3c0'], cape: ['#8a6410', '#ffd84a'] },
+  guardian: { coat: '#e8c040', inner: '#ffffff', v: 9, ridge: true, trim: '#fff6c8', pauldron: ['#ffe680', '#fff6c8'], cape: ['#fff3c0', '#e8b923'] },
 };
 export const OUTFIT_IDS = Object.keys(OUTFIT);
 
@@ -945,6 +948,49 @@ function heroDeco(ctx, id, phase) {
           circle(ctx, hx, hy, 3, '#6cc24a', 1.2);
           ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.arc(hx + 0.8, hy - 0.6, 0.8, 0, Math.PI * 2); ctx.fill();
         }
+      }
+      break;
+    case 'emperor': // 죽음의 황제: 뾰족한 검은 황관 + 보랏빛 보석
+      if (phase === 'front') {
+        poly(ctx, [[-15, top + 7], [-17, top - 8], [-9, top - 1], [-4, top - 13], [0, top - 4], [4, top - 13], [9, top - 1], [17, top - 8], [15, top + 7]], '#1a1020', 1.8);
+        ctx.strokeStyle = '#d8b84a'; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.moveTo(-15, top + 4); ctx.lineTo(15, top + 4); ctx.stroke();
+        circle(ctx, 0, top, 2.6, '#9a3aff', 1);
+        circle(ctx, -9, top + 1, 1.6, '#c9a0ff', 0.8);
+        circle(ctx, 9, top + 1, 1.6, '#c9a0ff', 0.8);
+      }
+      break;
+    case 'goldlord': // 영원한 황금의 군주: 금빛 월계관 + 머리 위 금 고리
+      if (phase === 'front') {
+        for (const sx of [-1, 1]) {
+          for (let k = 0; k < 4; k++) {
+            const x = sx * (6 + k * 3.6);
+            const y = top + 6 - k * 1.2;
+            ctx.save(); ctx.translate(x, y); ctx.rotate(sx * (0.5 + k * 0.25));
+            ctx.beginPath(); ctx.ellipse(0, -3, 2.2, 4.6, 0, 0, Math.PI * 2); fillStroke(ctx, '#ffd84a', 1.2, '#8a6410');
+            ctx.restore();
+          }
+        }
+        ctx.strokeStyle = '#ffe680'; ctx.lineWidth = 2.4;
+        ctx.beginPath(); ctx.ellipse(0, top - 9, 11, 3.4, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+      break;
+    case 'guardian': // 영원한 황금의 수호신: 날개 달린 금 투구 + 등 뒤 금빛 후광(가만히 있음)
+      if (phase === 'back') {
+        ctx.strokeStyle = 'rgba(255,224,102,0.55)'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(0, BY - 6, R + 12, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,246,200,0.5)'; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.arc(0, BY - 6, R + 16, 0, Math.PI * 2); ctx.stroke();
+      }
+      if (phase === 'front') {
+        ctx.beginPath(); ctx.arc(0, BY, R + 1.5, Math.PI * 1.1, Math.PI * 1.9); ctx.lineTo(R * 0.95, BY - 10); ctx.lineTo(-R * 0.95, BY - 10); ctx.closePath();
+        fillStroke(ctx, '#e8c040', 2, '#8a6410');
+        for (const sx of [-1, 1]) { // 투구 양옆 날개
+          ctx.beginPath(); ctx.moveTo(sx * 15, top + 8); ctx.quadraticCurveTo(sx * 30, top - 2, sx * 28, top - 14);
+          ctx.quadraticCurveTo(sx * 24, top - 4, sx * 18, top - 2); ctx.quadraticCurveTo(sx * 22, top + 2, sx * 14, top + 4); ctx.closePath();
+          fillStroke(ctx, '#fff6c8', 1.6, '#c8961a');
+        }
+        circle(ctx, 0, top + 4, 2.6, '#ffffff', 1);
       }
       break;
     case 'tornado': // 회오리 술사: 비행 모자 + 이마 위 고글 + 휘날리는 목도리

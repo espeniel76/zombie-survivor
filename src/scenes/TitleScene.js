@@ -1,6 +1,6 @@
 // 첫 화면, 아군 도감, 설정
 import Phaser from 'phaser';
-import { ALLIES, TIERS } from '../data/allies.js';
+import { ALLIES, ALLY, TIERS } from '../data/allies.js';
 import * as R from '../core/rules.js';
 import { loadSave, writeSave, TEST } from '../core/save.js';
 import { unlockAudio } from '../core/sfx.js';
@@ -36,6 +36,7 @@ export class TitleScene extends Phaser.Scene {
     curtainIn(this);
     if (data?.open === 'book') this.showBook();
     else if (data?.open === 'shop') this.showShop();
+    else if (data?.open === 'event') this.showEvent();
     else this.showMain();
     window.__load?.done();
   }
@@ -111,16 +112,17 @@ export class TitleScene extends Phaser.Scene {
     const wallet = text(this, 696, 54, R.formatNum(this.save.coins || 0), 32, '#ffe08a', { ox: 1 });
     c.add([wallet, this.add.image(696 - wallet.width - 24, 54, 'item_coin').setScale(1.4)]);
     const small = [
+      ['이벤트', () => this.showEvent(), '#ffe680'],
       ['상점', () => this.showShop(), '#ffe08a'],
       ['아군 도감', () => this.showBook(), COLOR.orangeText],
       ['이야기', () => this.showStory(), '#f4eeff'],
       ['설정', () => this.showSettings(), COLOR.text],
     ];
-    const bw = 152;
-    const gap = 12;
+    const bw = 128;
+    const gap = 8;
     const x0 = W / 2 - ((bw + gap) * (small.length - 1)) / 2;
     small.forEach(([label, fn, color], k) =>
-      c.add(button(this, x0 + k * (bw + gap), 1150, bw, 72, label, fn, { fill: 0x26303a, textColor: color, size: 24 })));
+      c.add(button(this, x0 + k * (bw + gap), 1150, bw, 72, label, fn, { fill: k === 0 ? 0x5a4410 : 0x26303a, textColor: color, size: 22 })));
   }
 
   // 테스트판: 맵과 시작 웨이브를 고른다(전장 코인 100만, 신화·맵 모두 열림)
@@ -147,6 +149,90 @@ export class TitleScene extends Phaser.Scene {
     });
     c.add(text(this, W / 2, 880, '게임 중에는 아래 \'다음 보스로\' 버튼으로 다음 거대 좀비까지 건너뛸 수 있어요', 19, COLOR.dim, { strokeThickness: 0, bold: false, wrap: 600 }));
     c.add(button(this, W / 2, 1120, 300, 80, '뒤로', () => this.showMain(), { fill: 0x3a4652, textColor: '#eef3ea' }));
+  }
+
+  // ── 이벤트: 황금 열쇠 · 전설 상자 · 주말 보스 러시 · 오늘의 도전 ──
+  showEvent() {
+    this.clear();
+    const c = this.main;
+    c.add(panel(this, W / 2, H / 2, 692, 1200));
+    c.add(text(this, W / 2, 96, '이벤트', 44, '#ffe680'));
+    const keys = this.save.keys || 0;
+    c.add(this.add.image(W / 2 - 110, 150, 'item_key').setScale(1.4));
+    c.add(text(this, W / 2 + 10, 150, `황금 열쇠 ${R.formatNum(keys)}개`, 30, '#ffe680'));
+    c.add(text(this, W / 2, 192, '좀비 5마리 중 1마리꼴로 금빛 좀비! 쓰러뜨리면 황금 열쇠를 떨어뜨려요', 18, COLOR.dim, { strokeThickness: 0, bold: false }));
+    const card = (y, h, edge) => c.add(panel(this, W / 2, y, 620, h, 0x1b222b, edge, 22));
+    // 전설 상자
+    card(390, 320, 0xffd84a);
+    c.add(this.add.image(190, 380, 'chest').setScale(1.05));
+    c.add(text(this, 300, 270, '전설 상자', 34, '#ffe680', { ox: 0 }));
+    c.add(text(this, 300, 312, '황금 열쇠 50개로 열어요', 20, COLOR.text, { ox: 0, strokeThickness: 0, bold: false }));
+    c.add(text(this, 300, 352, '죽음의 황제 · 영원한 황금의 군주 12%씩\n잠긴 신화 해금 25% · 보유 코인\n1%: 이터널 「영원한 황금의 수호신」', 17, COLOR.dim, { ox: 0, oy: 0, strokeThickness: 0, bold: false, align: 'left', lineSpacing: 6 }));
+    const can = keys >= R.BOX_PRICE;
+    c.add(button(this, 470, 500, 300, 70, can ? '열기 (열쇠 50)' : `열쇠 ${R.BOX_PRICE - keys}개 더 필요`, () => can && this.openChest(),
+      { fill: can ? 0xffd84a : 0x4a535c, textColor: can ? '#2a1a00' : '#aab3ba', size: 24 }));
+    // 주말 보스 러시
+    const weekend = R.isWeekend() || TEST;
+    card(690, 220, 0xff7a5a);
+    c.add(text(this, 70, 610, '주말 보스 러시', 30, '#ffb39a', { ox: 0 }));
+    c.add(text(this, 70, 652, '거대 좀비만 연달아! 보스마다 황금 열쇠 +2', 20, COLOR.text, { ox: 0, strokeThickness: 0, bold: false }));
+    c.add(text(this, 70, 686, weekend ? `토·일에만 열려요 · 최고 기록 보스 ${this.save.bestRush || 0}` : '토요일·일요일에 열려요', 18, COLOR.dim, { ox: 0, strokeThickness: 0, bold: false }));
+    c.add(button(this, 540, 750, 220, 64, weekend ? '도전' : '잠김', () => weekend && this.go('Game', { preview: null, map: 'field', mode: 'rush' }),
+      { fill: weekend ? 0xff7a5a : 0x4a535c, textColor: weekend ? '#2a0e00' : '#aab3ba', size: 26 }));
+    // 오늘의 도전
+    const d = R.dailyFor();
+    const done = this.save.daily?.date === R.dayKey() && this.save.daily.done;
+    card(950, 240, 0x7fdc9a);
+    c.add(text(this, 70, 862, `오늘의 도전 · ${d.name}`, 30, '#9cffc0', { ox: 0 }));
+    c.add(text(this, 70, 904, `${d.desc} · ${d.goal}웨이브까지 막기`, 20, COLOR.text, { ox: 0, strokeThickness: 0, bold: false }));
+    c.add(text(this, 70, 938, done ? '오늘은 성공했어요! 내일 새 도전이 열려요' : `성공하면 황금 열쇠 +${R.DAILY_KEYS} (하루 한 번)`, 18, COLOR.dim, { ox: 0, strokeThickness: 0, bold: false }));
+    c.add(button(this, 540, 1012, 220, 64, done ? '다시 하기' : '도전', () => this.go('Game', { preview: null, map: 'field', mode: 'daily' }),
+      { fill: 0x7fdc9a, textColor: '#0e2a18', size: 26 }));
+    c.add(button(this, W / 2, 1180, 300, 72, '뒤로', () => this.showMain(), { fill: 0x3a4652, textColor: '#eef3ea' }));
+  }
+
+  // 전설 상자 열기: 상자가 천천히 흔들리다 금빛 고리와 함께 열리고 결과가 떠오른다(번쩍임 없음)
+  openChest() {
+    const res = R.openBox(this.save);
+    if (!res) return;
+    writeSave();
+    const box = this.add.container(0, 0).setDepth(30);
+    const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.75).setInteractive();
+    box.add(dim);
+    const chest = this.add.image(W / 2, 600, 'chest').setScale(1.6);
+    box.add(chest);
+    appear(this, box, { duration: 220, dy: 0 });
+    this.tweens.add({ targets: chest, angle: { from: -4, to: 4 }, duration: 260, yoyo: true, repeat: 3, ease: 'Sine.InOut',
+      onComplete: () => {
+        const eternal = res.type === 'hero' && ALLY[res.id].tier === 6;
+        const ring = this.add.image(W / 2, 600, 'ring').setTint(eternal ? 0xffe066 : 0xffd84a).setAlpha(0.8).setScale(0.5);
+        box.add(ring);
+        this.tweens.add({ targets: ring, scale: eternal ? 14 : 8, alpha: 0, duration: eternal ? 1400 : 800, ease: 'Quad.Out' });
+        this.tweens.add({ targets: chest, alpha: 0, scale: 1.9, duration: 400 });
+        this.time.delayedCall(350, () => this.showChestResult(box, res, eternal));
+      } });
+  }
+
+  showChestResult(box, res, eternal) {
+    const c = this.add.container(0, 0);
+    box.add(c);
+    if (res.type === 'coins') {
+      c.add(this.add.image(W / 2, 560, 'item_coin').setScale(4));
+      c.add(text(this, W / 2, 680, `보유 코인 +${R.formatNum(res.coins)}`, 40, '#ffe08a'));
+    } else {
+      const a = ALLY[res.id];
+      const t = TIERS[a.tier];
+      if (eternal) c.add(text(this, W / 2, 360, '이터널!', 64, t.text, { strokeThickness: 10 }));
+      c.add(allyView(this, W / 2, 570, a.id, 2.6));
+      c.add(text(this, W / 2, 700, a.name, 40, t.text));
+      c.add(text(this, W / 2, 748, `${t.name} · ${a.role}`, 24, COLOR.text, { strokeThickness: 0 }));
+      c.add(text(this, W / 2, 790, res.type === 'dup' ? `이미 있어서 보유 코인 +${R.formatNum(res.coins)}` : '해금! 전장 상점에 나와요', 22, res.type === 'dup' ? '#ffe08a' : '#9cffc0', { strokeThickness: 0 }));
+    }
+    c.add(button(this, W / 2, 940, 300, 80, '확인', () => {
+      vanish(this, box, { duration: 200 });
+      this.showEvent();
+    }, { fill: 0xffd84a, textColor: '#2a1a00' }));
+    appear(this, c, { duration: 400, dy: 24 });
   }
 
   // 맵 고르기(두 번째 맵이 열린 뒤)
@@ -183,7 +269,7 @@ export class TitleScene extends Phaser.Scene {
     c.add(text(this, W / 2, 150, '신화를 해금하면 전장 상점에 나와요 · 그림을 누르면 미리보기', 20, COLOR.dim, { strokeThickness: 0, bold: false }));
     const wallet = text(this, W / 2 + 14, 192, `보유 코인 ${R.formatNum(this.save.coins || 0)}`, 28, '#ffe08a');
     c.add([wallet, this.add.image(W / 2 - wallet.width / 2 - 12, 192, 'item_coin').setScale(1.2)]);
-    const mythics = ALLIES.filter(a => R.needsUnlock(a.id));
+    const mythics = R.shopMythics();
     const red = TIERS[5];
     mythics.forEach((a, k) => {
       const x = W / 2 + ((k % 3) - 1) * 216;
@@ -304,24 +390,24 @@ export class TitleScene extends Phaser.Scene {
     TIERS.forEach((t, ti) => {
       const list = ALLIES.filter(a => a.tier === ti);
       for (let start = 0; start < list.length; start += 5, row++) {
-        const y = 196 + row * 96;
+        const y = 190 + row * 84;
         if (start === 0) c.add(text(this, 40, y, t.name, 22, t.text, { ox: 0, strokeThickness: 0 }));
         list.slice(start, start + 5).forEach((a, col) => {
           const x = 160 + col * 108;
           const g = this.add.graphics();
           g.fillStyle(0x10151a, 1);
-          g.fillRoundedRect(x - 42, y - 42, 84, 84, 10);
+          g.fillRoundedRect(x - 38, y - 38, 76, 76, 10);
           g.lineStyle(3, t.color, 1);
-          g.strokeRoundedRect(x - 42, y - 42, 84, 84, 10);
-          const img = allyView(this, x, y + 10, a.id, 0.92);
-          const zone = this.add.zone(x, y, 84, 84).setInteractive({ useHandCursor: true });
+          g.strokeRoundedRect(x - 38, y - 38, 76, 76, 10);
+          const img = allyView(this, x, y + 9, a.id, 0.82);
+          const zone = this.add.zone(x, y, 76, 76).setInteractive({ useHandCursor: true });
           zone.on('pointerup', () => this.go('Game', { preview: a.id, from: 'book' }));
           c.add([g, img, zone]);
         });
       }
     });
     c.add(detail);
-    detail.add(text(this, W / 2, 1040, '아군을 누르면 싸우는 모습을 미리 볼 수 있어요', 24, COLOR.dim, { strokeThickness: 0 }));
+    detail.add(text(this, W / 2, 1100, '아군을 누르면 싸우는 모습을 미리 볼 수 있어요', 22, COLOR.dim, { strokeThickness: 0 }));
     c.add(button(this, W / 2, 1170, 300, 80, '뒤로', () => this.showMain(), { fill: 0x3a4652, textColor: '#eef3ea' }));
   }
 }

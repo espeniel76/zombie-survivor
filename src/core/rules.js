@@ -1,5 +1,5 @@
 // 화면과 상관없는 순수 규칙들. test/rules.test.js 에서 확인한다.
-import { ALLY, MAX_ALLY_LEVEL } from '../data/allies.js';
+import { ALLY, ALLIES, MAX_ALLY_LEVEL, BOX_ONLY } from '../data/allies.js';
 import { ZOMBIES } from '../data/zombies.js';
 
 export const START_COINS = 200;
@@ -23,8 +23,68 @@ export function dropCoins(kind) {
   return DROP[kind] ?? 1;
 }
 export function needsUnlock(id) {
-  return ALLY[id].tier === 5;
+  return ALLY[id].tier >= 5;
 }
+// 메인 상점에서 코인으로 해금할 수 있는 신화(상자 전용·이터널 빼고)
+export function shopMythics() {
+  return ALLIES.filter(a => a.tier === 5 && !BOX_ONLY.has(a.id));
+}
+
+// ── 황금 열쇠 이벤트 ──
+// 좀비 5마리 중 1마리꼴로 금빛 좀비. 쓰러뜨리면 황금 열쇠 1개. 열쇠 50개로 전설 상자 하나.
+export const GOLDEN_CHANCE = 0.2;
+export const BOX_PRICE = 50;
+// 전설 상자: 1% 이터널, 12%씩 상자 신화 둘, 25% 잠긴 신화 하나 해금, 나머지는 보유 코인
+export function openBox(save, rng = Math.random) {
+  if ((save.keys || 0) < BOX_PRICE) return null;
+  save.keys -= BOX_PRICE;
+  save.meta.unlocked = save.meta.unlocked || [];
+  const has = id => save.meta.unlocked.includes(id);
+  const give = id => {
+    if (has(id)) { // 이미 있으면 보유 코인으로
+      save.coins = (save.coins || 0) + 2000;
+      return { type: 'dup', id, coins: 2000 };
+    }
+    save.meta.unlocked.push(id);
+    return { type: 'hero', id };
+  };
+  const r = rng();
+  if (r < 0.01) return give('guardian');
+  if (r < 0.13) return give('emperor');
+  if (r < 0.25) return give('goldlord');
+  if (r < 0.5) {
+    const locked = shopMythics().filter(a => !has(a.id));
+    if (locked.length) return give(locked[Math.floor(rng() * locked.length)].id);
+  }
+  const coins = 500 + Math.floor(rng() * 11) * 100;
+  save.coins = (save.coins || 0) + coins;
+  return { type: 'coins', coins };
+}
+
+// ── 오늘의 도전: 날마다 규칙 하나, 목표 웨이브를 넘기면 황금 열쇠 10개(하루 한 번) ──
+export const DAILY = [
+  { id: 'low', name: '일반·고급만', desc: '일반·고급 아군만 쓸 수 있어요', goal: 12, maxTier: 1 },
+  { id: 'wall', name: '얇은 벽', desc: '기지 체력 100으로 시작해요', goal: 15, baseHp: 100 },
+  { id: 'fast', name: '빠른 좀비', desc: '모든 좀비가 35% 빨라요', goal: 15, zSpeed: 1.35 },
+  { id: 'nomyth', name: '신화 금지', desc: '전설까지만 쓸 수 있어요', goal: 25, maxTier: 4 },
+  { id: 'tough', name: '튼튼한 좀비', desc: '모든 좀비 체력 1.5배', goal: 15, zHp: 1.5 },
+  { id: 'poor', name: '빈손 시작', desc: '시작 코인 50', goal: 15, startCoins: 50 },
+  { id: 'nohero', name: '영웅 없이', desc: '영웅 등급까지만 쓸 수 있어요', goal: 20, maxTier: 3 },
+];
+export const DAILY_KEYS = 10;
+export function dayKey(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+export function dailyFor(d = new Date()) {
+  const n = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
+  return DAILY[n % DAILY.length];
+}
+
+// ── 주말 보스 러시: 토·일에만. 거대 좀비만 연달아 ──
+export function isWeekend(d = new Date()) {
+  return d.getDay() === 0 || d.getDay() === 6;
+}
+export const RUSH_KEYS = 2; // 보스 하나 잡을 때마다 황금 열쇠
 export function isUnlocked(save, id) {
   return !needsUnlock(id) || (save?.meta?.unlocked || []).includes(id);
 }

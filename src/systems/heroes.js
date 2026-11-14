@@ -26,6 +26,8 @@ export class HeroSystem {
     this.pools = [];
     this.tornados = [];
     this.dragons = new Map(); // 아군 → 용 그림
+    this.dooms = []; // 죽음의 황제가 선고한 좀비
+    this.golds = []; // 황금비가 내리는 자리
     this.readyTexts = new Map(); // 영웅 → '각성!' 글자
     this.globalSlow = 0;
     this.g = scene.add.graphics().setDepth(8.5); // 실, 시계, 영혼, 시선 표시
@@ -80,6 +82,8 @@ export class HeroSystem {
 
   // ── 거울 기사: 기지를 때린 좀비에게 되갚기 ──
   onBaseHit(n, from) {
+    // 영원한 황금의 수호신: 황금 결계가 기지 피해를 줄인다
+    for (const { u } of this.alliesOf('guardian')) n *= 1 - u.st.guard;
     const mirrors = this.alliesOf('mirror');
     if (!mirrors.length) return n;
     let guard = 0;
@@ -231,6 +235,36 @@ export class HeroSystem {
         }
         this.ripple(target.x, target.y, 0xffb8f0, st.radius, 700);
         s.snd('sparkle', target.x);
+        break;
+      }
+      case 'doom': { // 죽음의 황제: 사거리 안 가장 센 좀비 셋에게 선고 → 잠시 뒤 큰 피해
+        const pool = s.zombies.filter(z => !z.dead && !z.puppet && !z.doomed && Math.hypot(z.x - p.x, z.y - p.y) <= st.range + z.r);
+        pool.sort((a2, b2) => b2.hp - a2.hp);
+        for (const z of pool.slice(0, st.marks)) this.markDoom(z, st);
+        s.snd('swish', p.x);
+        break;
+      }
+      case 'goldrain': { // 영원한 황금의 군주: 가장 빽빽한 곳에 황금비
+        let best = target;
+        let bestN = -1;
+        for (const z of s.zombies) {
+          if (z.dead || Math.hypot(z.x - p.x, z.y - p.y) > st.range) continue;
+          let n = 0;
+          for (const o of s.zombies) if (!o.dead && Math.hypot(o.x - z.x, o.y - z.y) < st.radius) n++;
+          if (n > bestN) { bestN = n; best = z; }
+        }
+        this.goldRain(best.x, best.y, st.radius, st.time, st);
+        s.snd('sparkle', p.x);
+        break;
+      }
+      case 'guardian': { // 영원한 황금의 수호신: 황금 창이 가까운 좀비 다섯을 꿰뚫는다
+        const pool = s.zombies.filter(z => !z.dead && !z.puppet && Math.hypot(z.x - p.x, z.y - p.y) <= st.range + z.r);
+        pool.sort((a2, b2) => Math.hypot(a2.x - this.L.CX, a2.y - this.L.CY) - Math.hypot(b2.x - this.L.CX, b2.y - this.L.CY));
+        for (const z of pool.slice(0, st.spears)) {
+          s.lines.push({ pts: [p.x, p.y - 20, z.x, z.y], color: 0xffe066, width: 5, life: 0.28, max: 0.28 });
+          s.hurt(z, st.dmg);
+        }
+        s.snd('zap', p.x);
         break;
       }
       case 'dice': { // 운명의 도박사: 1 헛방, 2~5 배율, 6 대박(화면의 모든 좀비에 번개)
@@ -385,6 +419,19 @@ export class HeroSystem {
       case 'dice':
         u.forceSix = true;
         u.cd = 0;
+        break;
+      case 'doom': // 화면의 모든 좀비에게 선고
+        for (const z of live()) if (!z.doomed) this.markDoom(z, st);
+        break;
+      case 'goldrain': // 기지 둘레 전체에 황금비
+        this.goldRain(this.L.CX, this.L.CY, 360, 4, st);
+        break;
+      case 'guardian': // 모든 좀비에게 황금 창 + 기지 30% 수리
+        for (const z of live()) {
+          s.lines.push({ pts: [p.x, p.y - 20, z.x, z.y], color: 0xffe066, width: 4, life: 0.35, max: 0.35 });
+          s.hurt(z, st.dmg);
+        }
+        s.baseHp = Math.min(s.baseMax, s.baseHp + Math.round(s.baseMax * 0.3));
         break;
       case 'gravity': { // 전장에서 가장 빽빽한 곳에 거대한 중력장
         const cand = live();
@@ -593,6 +640,58 @@ export class HeroSystem {
     }
   }
 
+  // 죽음의 황제: 좀비 머리 위에 선고 표시 → delay초 뒤 최대 체력의 pct만큼(거대 좀비는 bossPct) + dmg
+  markDoom(z, st) {
+    z.doomed = true;
+    this.dooms.push({ z, t: st.delay, st });
+  }
+
+  // 황금비: 자리에 머무는 동안 0.25초마다 피해, 그 안에서 쓰러지면 코인 coinMul배
+  goldRain(x, y, r, time, st) {
+    this.golds.push({ x, y, r, life: time, max: time, tick: 0, st });
+    this.ripple(x, y, 0xffd84a, r, 700);
+  }
+
+  updateDooms(dt) {
+    const s = this.s;
+    for (const d of this.dooms) {
+      d.t -= dt;
+      if (d.z.dead) { d.done = true; continue; }
+      if (d.t > 0) continue;
+      d.done = true;
+      d.z.doomed = false;
+      const z = d.z;
+      this.slash(z.x, z.y, z.r);
+      s.lines.push({ pts: [z.x, z.y - z.r - 40, z.x, z.y + z.r], color: 0x9a3aff, width: 5, life: 0.3, max: 0.3 });
+      s.hurt(z, d.st.dmg + z.maxHp * (z.def.boss ? d.st.bossPct : d.st.pct));
+      s.snd('impact', z.x);
+    }
+    if (this.dooms.some(d => d.done)) this.dooms = this.dooms.filter(d => !d.done);
+  }
+
+  updateGolds(dt) {
+    const s = this.s;
+    for (const gz of this.golds) {
+      gz.life -= dt;
+      gz.tick -= dt;
+      if (gz.tick <= 0) {
+        gz.tick = 0.25;
+        for (const z of s.zombies) {
+          if (z.dead || Math.hypot(z.x - gz.x, z.y - gz.y) > gz.r + z.r * 0.5) continue;
+          z.goldUntil = s.t + 0.4;
+          z.goldMul = gz.st.coinMul;
+          s.hurt(z, gz.st.dmg, { quiet: true });
+        }
+        // 떨어지는 금화(천천히 떨어지며 옅어진다)
+        const a = Math.random() * Math.PI * 2;
+        const rr = Math.random() * gz.r * 0.8;
+        const c = s.add.image(gz.x + Math.cos(a) * rr, gz.y + Math.sin(a) * rr - 40, 'item_coin').setDepth(8.2).setAlpha(0.9).setScale(0.8);
+        s.tweens.add({ targets: c, y: c.y + 40, alpha: 0, duration: 600, onComplete: () => c.destroy() });
+      }
+    }
+    if (this.golds.some(gz => gz.life <= 0)) this.golds = this.golds.filter(gz => gz.life > 0);
+  }
+
   ripple(x, y, color, radius, ms) {
     const ring = this.s.add.image(x, y, 'ring').setDepth(8).setTint(color).setAlpha(0.7).setScale(0.2);
     this.s.tweens.add({ targets: ring, scale: radius / 30, alpha: 0, duration: ms, ease: 'Quad.Out', onComplete: () => ring.destroy() });
@@ -630,6 +729,8 @@ export class HeroSystem {
     this.updateDragons(dt);
     this.updateTornados(dt);
     this.updateSweeps(dt);
+    this.updateDooms(dt);
+    this.updateGolds(dt);
     this.draw();
   }
 
@@ -840,6 +941,15 @@ export class HeroSystem {
   // 불사조 기사: 기지 체력이 바닥나기 직전, 웨이브마다 한 번 되살린다
   checkPhoenix() {
     const s = this.s;
+    for (const { u } of this.alliesOf('guardian')) {
+      if (s.guardianUsed || s.baseHp > s.baseMax * u.st.revive) continue;
+      s.guardianUsed = true;
+      s.baseHp = s.baseMax;
+      s.explode(this.L.CX, this.L.CY, this.L.HALF + 220, u.st.dmg * 3, 0xffd84a, 'bigboom');
+      this.ripple(this.L.CX, this.L.CY, 0xffe066, this.L.HALF + 260, 1100);
+      s.ui.banner('영원한 황금의 수호신이\n아홉 칸을 되살렸어요!');
+      return;
+    }
     for (const { u } of this.alliesOf('phoenix')) {
       if (s.baseHp > s.baseMax * u.st.trigger || u.rebornWave === s.wave) continue;
       u.rebornWave = s.wave;
@@ -859,6 +969,23 @@ export class HeroSystem {
     g.clear();
     const gr = this.ground;
     gr.clear();
+    // 황금비 자리(땅에 옅은 금빛), 죽음의 선고 표시(머리 위 보랏빛 고리, 시간이 다가올수록 좁아진다)
+    for (const gz of this.golds) {
+      const k = Math.min(1, gz.life / 0.4, (gz.max - gz.life) / 0.3 + 0.2);
+      gr.fillStyle(0xffd84a, 0.16 * k);
+      gr.fillCircle(gz.x, gz.y, gz.r);
+      gr.lineStyle(3, 0xffe680, 0.5 * k);
+      gr.strokeCircle(gz.x, gz.y, gz.r);
+    }
+    for (const d of this.dooms) {
+      const z = d.z;
+      if (z.dead) continue;
+      const k = Math.max(0, d.t / d.st.delay);
+      g.lineStyle(3, 0x9a3aff, 0.85);
+      g.strokeCircle(z.x, z.y - z.r - 18, 7 + 8 * k);
+      g.fillStyle(0x1a1020, 0.9);
+      g.fillCircle(z.x, z.y - z.r - 18, 4);
+    }
     for (const { u } of this.alliesOf('sweep')) {
       const inner = this.L.HALF + 18;
       const outer = inner + u.st.range;
@@ -975,5 +1102,6 @@ export class HeroSystem {
 
   clearWave() {
     for (const b of this.wisps) b.life = Math.min(b.life, 1);
+    this.golds = [];
   }
 }

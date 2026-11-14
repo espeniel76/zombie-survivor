@@ -44,6 +44,12 @@ export class FoeSystem {
   // ── 좀비가 나올 때 상태 초기화 ──
   spawned(z) {
     const d = z.def;
+    if (z.golden) {
+      if (this.s.textures.exists(`${d.tex}_gold`)) z.setTexture(`${d.tex}_gold`);
+      const halo = this.s.add.image(z.x, z.y, 'smoke').setTint(0xffe066).setAlpha(0.6).setScale(z.r / 12).setDepth(4.9);
+      this.s.tweens.add({ targets: halo, scale: (z.r / 12) * 1.18, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      z.goldHalo = halo;
+    }
     z.dashCd = d.dash ? d.dash.every * (0.5 + Math.random() * 0.5) : 0;
     z.dashState = null;
     z.dashT = 0;
@@ -76,6 +82,11 @@ export class FoeSystem {
 
   // 좀비가 쓰러지거나 사라질 때 따라다니던 그림 치우기
   removed(z) {
+    if (z.goldHalo) {
+      this.s.tweens.killTweensOf(z.goldHalo);
+      z.goldHalo.destroy();
+      z.goldHalo = null;
+    }
     if (z.shield) {
       const sh = z.shield;
       z.shield = null;
@@ -102,6 +113,7 @@ export class FoeSystem {
   update(z, dt, edge) {
     const d = z.def;
     const s = this.s;
+    if (z.goldHalo) z.goldHalo.setPosition(z.x, z.y - z.r * 0.3);
     if (d.regen && z.hp < z.maxHp) z.hp = Math.min(z.maxHp, z.hp + z.maxHp * d.regen * dt);
     if (z.drumRing) z.drumRing.setPosition(z.x, z.y);
     if (d.phase) {

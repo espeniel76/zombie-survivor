@@ -82,6 +82,12 @@ export class GameScene extends Phaser.Scene {
   // data.preview = 아군 id → 도감 미리보기: 그 아군 하나가 끝없이 오는 좀비와 싸우는 모습만 보여 준다(기록·이야기 없음)
   create(data) {
     this.preview = data?.preview || null;
+    // mode: 'rush'(주말 보스 러시) | 'daily'(오늘의 도전) | null
+    this.mode = !this.preview && ['rush', 'daily'].includes(data?.mode) ? data.mode : null;
+    this.daily = this.mode === 'daily' ? R.dailyFor() : null;
+    this.runKeys = 0; // 이번 판에 주운 황금 열쇠
+    this.rushKills = 0;
+    this.guardianUsed = false;
     this.mapId = !this.preview && data?.map && R.MAPS[data.map] ? data.map : 'field';
     this.map = R.MAPS[this.mapId];
     this.previewFrom = data?.from || 'book';
@@ -92,6 +98,8 @@ export class GameScene extends Phaser.Scene {
     this.phase = 'break';
     this.phaseLeft = R.FIRST_BREAK;
     this.coins = this.preview ? 0 : this.map.startCoins;
+    if (this.mode === 'rush') this.coins = 3000; // 보스만 나오니 처음부터 넉넉히
+    if (this.daily?.startCoins != null) this.coins = this.daily.startCoins;
     // 테스트판: 고른 웨이브부터, 전장 코인 100만
     this.test = TEST && !this.preview;
     if (this.test) {
@@ -99,7 +107,7 @@ export class GameScene extends Phaser.Scene {
       this.wave = Math.max(0, (data?.startWave || 1) - 1);
       this.phaseLeft = 5;
     }
-    this.baseMax = this.map.baseHp || R.BASE_HP; // 2번째 맵은 기지가 더 튼튼하다
+    this.baseMax = this.daily?.baseHp || this.map.baseHp || R.BASE_HP; // 2번째 맵은 기지가 더 튼튼하다
     this.baseHp = this.baseMax;
     this.kills = 0;
     this.runCoins = 0; // 이번 판에 주운 코인(보유 코인에 더해진다)
@@ -290,7 +298,8 @@ export class GameScene extends Phaser.Scene {
 
   buy(id, prefer = -1) {
     const a = ALLY[id];
-    if (!R.isUnlocked(this.save, id)) return { ok: false, msg: '메인 화면 상점에서 먼저 해금해야 해요' };
+    if (!R.isUnlocked(this.save, id)) return { ok: false, msg: R.needsUnlock(id) && ALLY[id].tier === 5 && !this.boxOnly(id) ? '메인 화면 상점에서 먼저 해금해야 해요' : '전설 상자에서 얻을 수 있어요' };
+    if (!this.tierAllowed(a.tier)) return { ok: false, msg: `오늘의 도전: ${this.daily.desc}` };
     if (this.coins < a.price) return { ok: false, msg: '코인이 부족해요' };
     let i = prefer >= 0 && !this.cells[prefer] ? prefer : this.firstEmpty();
     if (i < 0) return { ok: false, msg: '빈 칸이 없어요. 아군을 팔거나 옮겨 보세요.' };
@@ -424,6 +433,15 @@ export class GameScene extends Phaser.Scene {
     this.phaseLeft = 0.5;
   }
 
+  boxOnly(id) {
+    return ['emperor', 'goldlord', 'guardian'].includes(id);
+  }
+
+  // 오늘의 도전에서 쓸 수 있는 등급인지
+  tierAllowed(tier) {
+    return !(this.daily?.maxTier != null && tier > this.daily.maxTier);
+  }
+
   // 보상 카드 + 이번 웨이브 이변을 합친 배율
   computeMods() {
     const p = perkMods(this.perks);
@@ -432,9 +450,9 @@ export class GameScene extends Phaser.Scene {
       ...p,
       range: p.range * (e.range || 1),
       coin: p.coin * (e.coin || 1),
-      zSpeed: e.zSpeed || 1,
+      zSpeed: (e.zSpeed || 1) * (this.daily?.zSpeed || 1),
       zDmg: e.zDmg || 1,
-      zHp: e.hp || 1,
+      zHp: (e.hp || 1) * (this.daily?.zHp || 1),
       zSize: e.size || 1,
       count: e.count || 1,
     };
@@ -525,11 +543,12 @@ export class GameScene extends Phaser.Scene {
 
   // ── 웨이브 ──
   startWave() {
-    this.wave++;
+    this.wave = this.mode === 'rush' ? (Math.floor(this.wave / R.BOSS_EVERY) + 1) * R.BOSS_EVERY : this.wave + 1;
     this.phase = 'wave';
     this.spec = R.waveSpec(this.wave);
-    // 31웨이브부터는 웨이브마다 이변이 하나
-    this.event = R.waveEvent(this.wave + this.map.shift, this.lastEvent);
+    if (this.mode === 'rush') this.spec = { ...this.spec, count: 6 }; // 거대 좀비 + 호위 6마리
+    // 31웨이브부터는 웨이브마다 이변이 하나(보스 러시에는 없음)
+    this.event = this.mode === 'rush' ? null : R.waveEvent(this.wave + this.map.shift, this.lastEvent);
     if (this.event) this.lastEvent = this.event;
     this.updateMods();
     this.foes.applyEvent(this.event);
@@ -540,19 +559,20 @@ export class GameScene extends Phaser.Scene {
     if (bossKind) this.queue.splice(Math.floor(this.queue.length * 0.3), 0, bossKind);
     this.spawnT = 0;
     const ev = this.event ? R.EVENTS[this.event] : null;
-    if (this.wave === R.FINAL_WAVE) this.ui.banner(`웨이브 ${this.wave} · 마지막 밤\n${josa(ZOMBIES[bossKind].name, '이', '가')} 다가와요`);
+    if (this.mode === 'rush') this.ui.banner(`보스 러시 ${this.wave / R.BOSS_EVERY}번째 · ${ZOMBIES[bossKind].name}`);
+    else if (this.wave === R.FINAL_WAVE) this.ui.banner(`웨이브 ${this.wave} · 마지막 밤\n${josa(ZOMBIES[bossKind].name, '이', '가')} 다가와요`);
     else if (bossKind) this.ui.banner(`웨이브 ${this.wave} · ${ZOMBIES[bossKind].name} 등장!`);
     else if (ev) this.ui.banner(`웨이브 ${this.wave} · ${ev.name}\n${ev.desc}`);
     else this.ui.banner(`웨이브 ${this.wave}`);
     // 이야기: 이 웨이브에 장이 있고 아직 못 봤으면 배너 뒤에 보여 준다
-    const ch = chapterAt(this.wave);
+    const ch = this.mode ? null : chapterAt(this.wave);
     if (ch && !this.save.story.seen.includes(ch.wave)) {
       this.save.story.seen.push(ch.wave);
       writeSave();
       this.time.delayedCall(2300 / this.speed, () => this.ui.chapter(ch));
     }
     this.snd(this.spec.boss ? 'boss' : 'wave');
-    if (this.wave >= R.MAP2_WAVE && !this.preview && !this.save.meta.map2) {
+    if (this.wave >= R.MAP2_WAVE && !this.preview && !this.mode && !this.save.meta.map2) {
       this.save.meta.map2 = true;
       writeSave();
       this.time.delayedCall(2600 / this.speed, () => this.ui.toast(`두 번째 맵 「${R.MAPS.mall.name}」${josa(R.MAPS.mall.name, '이', '가').slice(-1)} 열렸어요!`));
@@ -560,6 +580,16 @@ export class GameScene extends Phaser.Scene {
   }
 
   endWave() {
+    // 오늘의 도전: 목표 웨이브를 막으면 황금 열쇠(하루 한 번)
+    if (this.daily && this.wave >= this.daily.goal) {
+      const today = R.dayKey();
+      if (this.save.daily?.date !== today || !this.save.daily.done) {
+        this.save.daily = { date: today, done: true };
+        this.save.keys = (this.save.keys || 0) + R.DAILY_KEYS;
+        this.runKeys += R.DAILY_KEYS;
+        this.time.delayedCall(2200 / this.speed, () => this.ui.banner(`오늘의 도전 성공!\n황금 열쇠 +${R.DAILY_KEYS}`));
+      }
+    }
     const bonus = R.waveBonus(this.wave);
     this.coins += bonus;
     this.phase = 'break';
@@ -587,6 +617,13 @@ export class GameScene extends Phaser.Scene {
     if (this.phase === 'over') return;
     this.phase = 'over';
     const cleared = Math.max(0, this.wave - 1);
+    if (this.mode) {
+      if (this.mode === 'rush') this.save.bestRush = Math.max(this.save.bestRush || 0, this.rushKills);
+      writeSave();
+      this.snd('lose');
+      this.ui.showResult({ wave: this.wave, cleared, kills: this.kills, newBest: false, runCoins: this.runCoins, runKeys: this.runKeys, mode: this.mode, rushKills: this.rushKills, best: this.save.bestRush || 0 });
+      return;
+    }
     if (this.mapId === 'mall') this.save.best2 ??= { wave: 0, kills: 0 };
     const best = this.mapId === 'mall' ? this.save.best2 : this.save.best;
     const newBest = cleared > (best.wave || 0);
@@ -595,7 +632,7 @@ export class GameScene extends Phaser.Scene {
     best.kills = Math.max(best.kills || 0, this.kills);
     writeSave();
     this.snd('lose');
-    this.ui.showResult({ wave: this.wave, cleared, kills: this.kills, newBest, runCoins, bestWave: best.wave });
+    this.ui.showResult({ wave: this.wave, cleared, kills: this.kills, newBest, runCoins, bestWave: best.wave, runKeys: this.runKeys });
   }
 
   // at = {x, y}: 그 자리에서 나온다(소환·분열). 없으면 화면 밖 둘레에서.
@@ -641,6 +678,7 @@ export class GameScene extends Phaser.Scene {
     z.setFlipX(Math.cos(a + Math.PI) < 0);
     attachLegs(this, z, kind, size);
     z.walked = false;
+    z.golden = !this.preview && !at && !def.boss && Math.random() < R.GOLDEN_CHANCE;
     this.foes.spawned(z);
     this.zombies.push(z);
     if (def.boss) {
@@ -1242,7 +1280,8 @@ export class GameScene extends Phaser.Scene {
 
   killZombie(z) {
     z.dead = true;
-    const reward = Math.round(R.zombieReward(z.kind, this.wave) * this.mods.coin * this.map.coin);
+    const goldMul = z.goldUntil > this.t ? z.goldMul || 1 : 1; // 영원한 황금의 군주의 황금비
+    const reward = Math.round(R.zombieReward(z.kind, this.wave) * this.mods.coin * this.map.coin * goldMul);
     this.coins += reward;
     this.kills++;
     // 떨어뜨린 코인은 보유 코인으로(미리보기에서는 없음)
@@ -1253,13 +1292,21 @@ export class GameScene extends Phaser.Scene {
         this.save.coins = (this.save.coins || 0) + drop;
         this.ui.dropCoin(z.x, z.y, drop);
       }
+      // 금빛 좀비: 황금 열쇠 하나(보스 러시에서는 보스마다 둘)
+      const keys = (z.golden ? 1 : 0) + (this.mode === 'rush' && z.def.boss ? R.RUSH_KEYS : 0);
+      if (keys) {
+        this.runKeys += keys;
+        this.save.keys = (this.save.keys || 0) + keys;
+        this.ui.dropKey(z.x, z.y);
+      }
+      if (this.mode === 'rush' && z.def.boss) this.rushKills++;
     }
     this.puff(z.x, z.y, z.r / 14, 0xb8bfc4);
     if (this.save.settings.numbers || z.def.boss) this.floatText(z.x, z.y - 8, `+${reward}`, '#ffd84a', z.def.boss ? 34 : 18, true);
     this.snd(z.def.boss ? 'bosspoof' : 'poof', z.x);
     if (z === this.boss) {
       this.boss = null;
-      if (z.def.final) this.finalBossDown();
+      if (z.def.final && !this.mode) this.finalBossDown();
       else this.ui.banner(`${josa(z.def.name, '을', '를')} 쓰러뜨렸어요!`);
     }
     // 분열 좀비: 작은 좀비 둘로 갈라진다
