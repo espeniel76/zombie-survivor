@@ -4,7 +4,7 @@ import { ALLIES, ALLY, TIERS } from '../data/allies.js';
 import * as R from '../core/rules.js';
 import { loadSave, writeSave, TEST } from '../core/save.js';
 import { unlockAudio } from '../core/sfx.js';
-import { W, H, COLOR, text, panel, button, settingsRows, appear, vanish, curtainIn, curtainOut } from '../core/ui.js';
+import { W, H, COLOR, text, panel, button, settingsRows, appear, vanish, curtainIn, curtainOut, scrollArea } from '../core/ui.js';
 import { statsLine } from './UIScene.js';
 import { allyView, attachLegs, stepLegs } from '../render/sprites.js';
 import { storyPages } from '../core/story-ui.js';
@@ -291,6 +291,9 @@ export class TitleScene extends Phaser.Scene {
     c.add([wallet, this.add.image(W / 2 - wallet.width / 2 - 12, 192, 'item_coin').setScale(1.2)]);
     const mythics = R.shopMythics();
     const red = TIERS[5];
+    const area = scrollArea(this, c, 20, 222, W - 40, 920);
+    const sc = area.content;
+    area.setHeight(Math.ceil(mythics.length / 3) * 178 + 20);
     mythics.forEach((a, k) => {
       const x = W / 2 + ((k % 3) - 1) * 216;
       const y = 316 + Math.floor(k / 3) * 178;
@@ -303,14 +306,14 @@ export class TitleScene extends Phaser.Scene {
       const img = allyView(this, x, y - 22, a.id, 0.82);
       if (!owned) img.setAlpha(0.75);
       const zone = this.add.zone(x, y - 34, 204, 96).setInteractive({ useHandCursor: true });
-      zone.on('pointerup', () => this.go('Game', { preview: a.id, from: 'shop' }));
+      zone.on('pointerup', (p) => area.ok(p) && this.go('Game', { preview: a.id, from: 'shop' }));
       const name = text(this, x, y + 22, a.name, 20, owned ? red.text : COLOR.text, { strokeThickness: 0 });
       const enough = (this.save.coins || 0) >= R.MYTHIC_UNLOCK;
       const b = owned
         ? button(this, x, y + 58, 180, 44, '해금됨', () => {}, { fill: 0x2a3138, textColor: '#93a39a', size: 20 })
         : button(this, x, y + 58, 180, 44, `${R.formatNum(R.MYTHIC_UNLOCK)}코인`, () => this.confirmUnlock(a),
-          { fill: enough ? COLOR.green : 0x4a535c, textColor: enough ? '#13200b' : '#aab3ba', size: 20 });
-      c.add([g, img, zone, name, b]);
+          { guard: area.ok, fill: enough ? COLOR.green : 0x4a535c, textColor: enough ? '#13200b' : '#aab3ba', size: 20 });
+      sc.add([g, img, zone, name, b]);
     });
     c.add(button(this, W / 2, 1196, 300, 72, '뒤로', () => this.showMain(), { fill: 0x3a4652, textColor: '#eef3ea' }));
   }
@@ -365,22 +368,20 @@ export class TitleScene extends Phaser.Scene {
     c.add(text(this, W / 2, 110, '이야기', 40, COLOR.text));
     c.add(text(this, W / 2, 158, '검은 비가 내린 뒤, 아홉 칸의 기록', 22, COLOR.dim, { strokeThickness: 0 }));
     const seen = this.save.story.seen;
-    const PER = 6;
-    const pages = Math.ceil(CHAPTERS.length / PER);
-    if (pages > 1) {
-      c.add(button(this, W / 2 - 150, 1062, 96, 56, '◀', () => this.showStory((page + pages - 1) % pages), { fill: 0x3a4652, textColor: '#eef3ea', size: 26 }));
-      c.add(text(this, W / 2, 1062, `${page + 1} / ${pages}`, 26, COLOR.text));
-      c.add(button(this, W / 2 + 150, 1062, 96, 56, '▶', () => this.showStory((page + 1) % pages), { fill: 0x3a4652, textColor: '#eef3ea', size: 26 }));
-    }
-    CHAPTERS.slice(page * PER, page * PER + PER).forEach((ch, k) => {
+    // 장이 많아도 칸을 줄이지 않고 스크롤
+    const area = scrollArea(this, c, 20, 190, W - 40, 920);
+    const sc = area.content;
+    area.setHeight(CHAPTERS.length * 128 + 20);
+    const add = (o) => sc.add(o);
+    CHAPTERS.forEach((ch, k) => {
       const y = 250 + k * 128;
       const open = seen.includes(ch.wave) || (this.save.best.wave || 0) >= ch.wave;
       const g = this.add.graphics();
       g.fillStyle(open ? 0x232b33 : 0x161b20, 1);
       g.fillRoundedRect(40, y - 50, W - 80, 104, 12);
-      c.add(g);
-      c.add(text(this, 64, y - 26, ch.title, 24, open ? COLOR.orangeText : '#5a6470', { ox: 0, strokeThickness: 0 }));
-      c.add(text(this, 64, y + 4, open ? ch.text : `웨이브 ${ch.wave}에 도달하면 열려요`, 18, open ? COLOR.text : '#5a6470',
+      add(g);
+      add(text(this, 64, y - 26, ch.title, 24, open ? COLOR.orangeText : '#5a6470', { ox: 0, strokeThickness: 0 }));
+      add(text(this, 64, y + 4, open ? ch.text : `웨이브 ${ch.wave}에 도달하면 열려요`, 18, open ? COLOR.text : '#5a6470',
         { ox: 0, oy: 0, strokeThickness: 0, bold: false, wrap: W - 130, align: 'left', lineSpacing: 2 }));
     });
     c.add(button(this, W / 2 - 150, 1170, 260, 80, '처음부터 보기', () => (this.overlay = storyPages(this, PROLOGUE, null)), { fill: 0x5a4a7a, textColor: '#f4eeff', size: 26 }));
@@ -404,30 +405,31 @@ export class TitleScene extends Phaser.Scene {
     const c = this.main;
     c.add(panel(this, W / 2, H / 2, 692, 1200));
     c.add(text(this, W / 2, 110, `아군 도감 · ${ALLIES.length}명`, 40, COLOR.text));
-    const detail = this.add.container(0, 0);
-    // 한 줄에 5명. 신화는 여러 줄이 된다.
+    c.add(text(this, W / 2, 152, '아군을 누르면 싸우는 모습을 미리 볼 수 있어요 · 끌어서 넘겨 보세요', 19, COLOR.dim, { strokeThickness: 0, bold: false }));
+    // 한 줄에 5명. 줄이 많아지면 칸을 줄이지 않고 스크롤한다.
+    const area = scrollArea(this, c, 20, 180, W - 40, 930);
+    const sc = area.content;
     let row = 0;
     TIERS.forEach((t, ti) => {
       const list = ALLIES.filter(a => a.tier === ti);
       for (let start = 0; start < list.length; start += 5, row++) {
-        const y = 190 + row * 84;
-        if (start === 0) c.add(text(this, 40, y, t.name, 22, t.text, { ox: 0, strokeThickness: 0 }));
+        const y = 236 + row * 100;
+        if (start === 0) sc.add(text(this, 40, y, t.name, 22, t.text, { ox: 0, strokeThickness: 0 }));
         list.slice(start, start + 5).forEach((a, col) => {
           const x = 160 + col * 108;
           const g = this.add.graphics();
           g.fillStyle(0x10151a, 1);
-          g.fillRoundedRect(x - 38, y - 38, 76, 76, 10);
+          g.fillRoundedRect(x - 44, y - 44, 88, 88, 12);
           g.lineStyle(3, t.color, 1);
-          g.strokeRoundedRect(x - 38, y - 38, 76, 76, 10);
-          const img = allyView(this, x, y + 9, a.id, 0.82);
-          const zone = this.add.zone(x, y, 76, 76).setInteractive({ useHandCursor: true });
-          zone.on('pointerup', () => this.go('Game', { preview: a.id, from: 'book' }));
-          c.add([g, img, zone]);
+          g.strokeRoundedRect(x - 44, y - 44, 88, 88, 12);
+          const img = allyView(this, x, y + 10, a.id, 0.95);
+          const zone = this.add.zone(x, y, 88, 88).setInteractive({ useHandCursor: true });
+          zone.on('pointerup', (p) => area.ok(p) && this.go('Game', { preview: a.id, from: 'book' }));
+          sc.add([g, img, zone]);
         });
       }
     });
-    c.add(detail);
-    detail.add(text(this, W / 2, 1100, '아군을 누르면 싸우는 모습을 미리 볼 수 있어요', 22, COLOR.dim, { strokeThickness: 0 }));
+    area.setHeight(row * 100 + 20);
     c.add(button(this, W / 2, 1170, 300, 80, '뒤로', () => this.showMain(), { fill: 0x3a4652, textColor: '#eef3ea' }));
   }
 }

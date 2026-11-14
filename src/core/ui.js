@@ -195,13 +195,87 @@ export function button(scene, x, y, w, h, label, onClick, opts = {}) {
     to(dark, 1, 90);
     scene.tweens.add({ targets: c, scale: 0.96, duration: 90, ease: 'Quad.Out' });
   });
-  c.on('pointerup', () => {
+  c.on('pointerup', (pointer) => {
     release();
     if (c.disabled) return;
+    if (opts.guard && !opts.guard(pointer)) return; // 스크롤 중이거나 보이는 칸 밖이면 누르지 않은 것으로
     sfx('click');
     onClick();
   });
   c.label = t;
   c.setFill = (f) => draw(f);
   return c;
+}
+
+// ── 스크롤 영역: 칸을 줄이지 않고 손가락으로 끌어 올리고 내린다(마우스 휠도) ──
+// parent 안에 (x, y, w, h) 창을 만들고, 그 안에 보이는 내용(content)을 돌려준다.
+// 내용 속 버튼·칸은 area.ok(pointer)로 눌렀는지 확인한다(끌기였거나 창 밖이면 false).
+export function scrollArea(scene, parent, x, y, w, h) {
+  const content = scene.add.container(0, 0);
+  parent.add(content);
+  const maskG = scene.make.graphics({}, false);
+  maskG.fillStyle(0xffffff, 1);
+  maskG.fillRect(x, y, w, h);
+  content.setMask(maskG.createGeometryMask());
+  const bar = scene.add.graphics();
+  parent.add(bar);
+  let total = h;
+  let start = null;
+  let base = 0;
+  let dragged = false;
+  const max = () => Math.max(0, total - h);
+  const drawBar = () => {
+    bar.clear();
+    if (max() <= 0) return;
+    const bh = Math.max(50, (h * h) / total);
+    const by = y + ((-content.y) / max()) * (h - bh);
+    bar.fillStyle(0xffffff, 0.22);
+    bar.fillRoundedRect(x + w - 8, by, 5, bh, 3);
+  };
+  const set = (v) => {
+    content.y = Math.max(-max(), Math.min(0, v));
+    drawBar();
+  };
+  const inside = (p) => p.x >= x && p.x <= x + w && p.y >= y && p.y <= y + h;
+  const down = (p) => {
+    dragged = false;
+    if (inside(p)) {
+      start = p.y;
+      base = content.y;
+    }
+  };
+  const move = (p) => {
+    if (start == null || !p.isDown) return;
+    const dy = p.y - start;
+    if (Math.abs(dy) > 10) dragged = true;
+    if (dragged) set(base + dy);
+  };
+  const up = () => {
+    start = null;
+  };
+  const wheel = (p, _o, _dx, dy) => {
+    if (inside(p)) set(content.y - dy);
+  };
+  scene.input.on('pointerdown', down);
+  scene.input.on('pointermove', move);
+  scene.input.on('pointerup', up);
+  scene.input.on('wheel', wheel);
+  content.once('destroy', () => {
+    scene.input.off('pointerdown', down);
+    scene.input.off('pointermove', move);
+    scene.input.off('pointerup', up);
+    scene.input.off('wheel', wheel);
+    maskG.destroy();
+  });
+  return {
+    content,
+    ok: (p) => !dragged && (!p || inside(p)),
+    setHeight(hh) {
+      total = Math.max(h, hh);
+      set(content.y);
+    },
+    reset() {
+      set(0);
+    },
+  };
 }

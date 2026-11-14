@@ -4,7 +4,7 @@ import { ALLIES, ALLY, TIERS, MAX_ALLY_LEVEL } from '../data/allies.js';
 import * as R from '../core/rules.js';
 import { loadSave, writeSave, TEST } from '../core/save.js';
 import { sfx } from '../core/sfx.js';
-import { W, H, COLOR, text, panel, button, settingsRows, appear, vanish, curtainIn, curtainOut } from '../core/ui.js';
+import { W, H, COLOR, text, panel, button, settingsRows, appear, vanish, curtainIn, curtainOut, scrollArea } from '../core/ui.js';
 import { allyView } from '../render/sprites.js';
 import { storyPages, chapterCard } from '../core/story-ui.js';
 import { PROLOGUE, ENDING } from '../data/story.js';
@@ -468,8 +468,7 @@ export class UIScene extends Phaser.Scene {
   shopSignature() {
     const g = this.game_;
     const empty = g.cells.filter(x => !x).length;
-    const all = ALLIES.filter(a => a.tier === this.shopTier);
-    const list = all.slice((this.shopPage || 0) * 5, (this.shopPage || 0) * 5 + 5);
+    const list = ALLIES.filter(a => a.tier === this.shopTier);
     return `${empty}|${list.map(a => (g.coins >= a.price ? 1 : 0)).join('')}`;
   }
 
@@ -486,8 +485,10 @@ export class UIScene extends Phaser.Scene {
     this.shopCoins = text(this, W / 2, 196, '', 26, COLOR.orangeText);
     c.add(this.shopCoins);
     this.shopTabs = this.add.container(0, 0);
-    this.shopList = this.add.container(0, 0);
-    c.add([this.shopTabs, this.shopList]);
+    c.add(this.shopTabs);
+    // 아군 목록: 많아지면 끌어서 넘긴다
+    this.shopArea = scrollArea(this, c, 30, 304, W - 60, 820);
+    this.shopList = this.shopArea.content;
     c.add(button(this, W / 2, 1180, 300, 80, '닫기', () => this.closeModal(), { fill: 0x3a4652, textColor: '#eef3ea' }));
     this.refreshShop();
   }
@@ -503,28 +504,15 @@ export class UIScene extends Phaser.Scene {
       const sel = k === this.shopTier;
       const b = button(this, x, 260, 88, 58, t.name, () => {
         this.shopTier = k;
-        this.shopPage = 0;
+        this.shopArea.reset();
         this.refreshShop();
-        appear(this, this.shopList, { duration: 200, dy: 10 });
       }, { fill: sel ? t.color : 0x232b33, textColor: sel ? '#10151a' : t.text, size: 24 });
       this.shopTabs.add(b);
     });
     this.shopList.removeAll(true);
-    // 한 쪽에 5명씩. 신화처럼 많으면 ◀ ▶ 로 넘긴다
-    const all = ALLIES.filter(a => a.tier === this.shopTier);
-    const pages = Math.ceil(all.length / 5);
-    this.shopPage = Math.min(this.shopPage || 0, pages - 1);
-    const list = all.slice(this.shopPage * 5, this.shopPage * 5 + 5);
-    if (pages > 1) {
-      const turn = d => {
-        this.shopPage = (this.shopPage + d + pages) % pages;
-        this.refreshShop();
-        appear(this, this.shopList, { duration: 200, dy: 10 });
-      };
-      this.shopList.add(button(this, W / 2 - 150, 1104, 96, 56, '◀', () => turn(-1), { fill: 0x3a4652, textColor: '#eef3ea', size: 26 }));
-      this.shopList.add(text(this, W / 2, 1104, `${this.shopPage + 1} / ${pages}`, 26, COLOR.text));
-      this.shopList.add(button(this, W / 2 + 150, 1104, 96, 56, '▶', () => turn(1), { fill: 0x3a4652, textColor: '#eef3ea', size: 26 }));
-    }
+    // 등급의 아군 모두(많으면 스크롤)
+    const list = ALLIES.filter(a => a.tier === this.shopTier);
+    this.shopArea.setHeight(list.length * 150 + 20);
     list.forEach((a, k) => {
       const y = 386 + k * 150;
       const c = this.add.container(0, 0);
@@ -567,7 +555,7 @@ export class UIScene extends Phaser.Scene {
           } else if (g.cells.every(x => x)) this.closeModal();
           else this.refreshShop();
         }
-      }, { fill: can ? COLOR.green : 0x4a535c, textColor: can ? '#13200b' : '#aab3ba', size: a.price >= 1000 || empty === 0 ? 22 : 26 });
+      }, { guard: this.shopArea.ok, fill: can ? COLOR.green : 0x4a535c, textColor: can ? '#13200b' : '#aab3ba', size: a.price >= 1000 || empty === 0 ? 22 : 26 });
       c.add(b);
       this.shopList.add(c);
     });
