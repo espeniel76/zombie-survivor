@@ -324,6 +324,101 @@ export class BootScene extends Phaser.Scene {
   }
 
   // 맵 바닥(화면 한 장 크기). 기지는 가운데(360, 650)에 놓인다.
+  // 전설 상자: 몸통·뚜껑을 따로 그려 뚜껑이 열리게. 짙은 붉은 나무 + 금 장식 + 보석 자물쇠, 뒤에 금빛 후광과 빛줄기
+  drawChest() {
+    const canvas = (key, w, h, draw) => {
+      if (this.textures.exists(key)) this.textures.remove(key);
+      const t = this.textures.createCanvas(key, w, h);
+      draw(t.context, w, h);
+      t.refresh();
+    };
+    const S = 2; // 크게 그려서 줄여 쓰면 선이 부드럽다
+    const gold = (ctx, x0, y0, x1, y1) => {
+      const g = ctx.createLinearGradient(x0, y0, x1, y1);
+      g.addColorStop(0, '#fff3b0'); g.addColorStop(0.35, '#ffd24a'); g.addColorStop(0.7, '#d99a16'); g.addColorStop(1, '#a8700c');
+      return g;
+    };
+    const wood = (ctx, y0, y1) => {
+      const g = ctx.createLinearGradient(0, y0, 0, y1);
+      g.addColorStop(0, '#a83228'); g.addColorStop(0.5, '#7e1f1c'); g.addColorStop(1, '#4e1012');
+      return g;
+    };
+    const rrect = (ctx, x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); };
+    const rivet = (ctx, x, y) => {
+      ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.arc(x, y, 2.6 * S, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#a8700c'; ctx.beginPath(); ctx.arc(x + 0.8 * S, y + 0.8 * S, 1.4 * S, 0, Math.PI * 2); ctx.fill();
+    };
+    const W0 = 180 * S;
+    // 몸통
+    canvas('chest_base', W0, 110 * S, (ctx) => {
+      ctx.scale(S, S);
+      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(90, 100, 84, 9, 0, 0, Math.PI * 2); ctx.fill();
+      rrect(ctx, 14, 8, 152, 88, 10); ctx.fillStyle = wood(ctx, 8, 96); ctx.fill();
+      ctx.lineWidth = 3; ctx.strokeStyle = '#2a0a0a'; ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1.5; // 나뭇결
+      for (const y of [30, 52, 74]) { ctx.beginPath(); ctx.moveTo(18, y); ctx.lineTo(162, y); ctx.stroke(); }
+      ctx.fillStyle = gold(ctx, 0, 8, 0, 96); // 금 띠(위·아래·양옆)
+      rrect(ctx, 12, 6, 156, 12, 5); ctx.fill(); ctx.strokeStyle = '#7a4e08'; ctx.lineWidth = 2; ctx.stroke();
+      rrect(ctx, 12, 84, 156, 13, 5); ctx.fill(); ctx.stroke();
+      for (const x of [30, 150]) { rrect(ctx, x - 9, 6, 18, 91, 4); ctx.fill(); ctx.stroke(); }
+      for (const x of [30, 150]) for (const y of [26, 48, 70]) rivet(ctx, x, y);
+      for (const [x, y] of [[22, 12], [158, 12], [22, 90], [158, 90]]) { // 모서리 장식
+        ctx.fillStyle = gold(ctx, x - 8, y - 8, x + 8, y + 8);
+        ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      }
+      // 자물쇠: 금 방패 + 붉은 보석 + 열쇠 구멍
+      ctx.fillStyle = gold(ctx, 72, 0, 108, 50);
+      ctx.beginPath(); ctx.moveTo(72, 2); ctx.lineTo(108, 2); ctx.lineTo(108, 30); ctx.quadraticCurveTo(90, 48, 72, 30); ctx.closePath();
+      ctx.fill(); ctx.strokeStyle = '#7a4e08'; ctx.lineWidth = 2.4; ctx.stroke();
+      const gem = ctx.createRadialGradient(87, 11, 1, 90, 14, 8);
+      gem.addColorStop(0, '#ffd0e0'); gem.addColorStop(0.4, '#ff3a6a'); gem.addColorStop(1, '#8a0a2a');
+      ctx.fillStyle = gem; ctx.beginPath(); ctx.arc(90, 14, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#7a4e08'; ctx.lineWidth = 1.6; ctx.stroke();
+      ctx.fillStyle = '#2a1408'; ctx.beginPath(); ctx.arc(90, 28, 3.2, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(88.6, 28, 2.8, 8);
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; rrect(ctx, 20, 20, 60, 6, 3); ctx.fill(); // 윤기
+    });
+    // 뚜껑(둥근 지붕)
+    canvas('chest_lid', W0, 70 * S, (ctx) => {
+      ctx.scale(S, S);
+      ctx.beginPath(); ctx.moveTo(10, 66); ctx.lineTo(10, 40); ctx.quadraticCurveTo(10, 4, 90, 4); ctx.quadraticCurveTo(170, 4, 170, 40); ctx.lineTo(170, 66); ctx.closePath();
+      ctx.fillStyle = wood(ctx, 4, 66); ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = '#2a0a0a'; ctx.stroke();
+      ctx.fillStyle = gold(ctx, 0, 0, 0, 66);
+      rrect(ctx, 8, 54, 164, 13, 5); ctx.fill(); ctx.strokeStyle = '#7a4e08'; ctx.lineWidth = 2; ctx.stroke();
+      for (const x of [30, 150]) {
+        ctx.beginPath(); ctx.moveTo(x - 9, 66); ctx.lineTo(x - 9, x < 90 ? 22 : 22); ctx.quadraticCurveTo(x, 10, x + 9, 22); ctx.lineTo(x + 9, 66); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+      }
+      // 가운데 금 왕관 문양
+      ctx.beginPath(); ctx.moveTo(74, 44); ctx.lineTo(76, 26); ctx.lineTo(83, 34); ctx.lineTo(90, 20); ctx.lineTo(97, 34); ctx.lineTo(104, 26); ctx.lineTo(106, 44); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      for (const x of [76, 90, 104]) { ctx.fillStyle = '#ff3a6a'; ctx.beginPath(); ctx.arc(x, x === 90 ? 20 : 26, 2.6, 0, Math.PI * 2); ctx.fill(); }
+      for (const x of [30, 150]) for (const y of [34, 48]) rivet(ctx, x, y);
+      ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.ellipse(56, 18, 26, 5, -0.15, 0, Math.PI * 2); ctx.fill(); // 윤기
+    });
+    // 뒤쪽 금빛 후광
+    canvas('chest_glow', 320, 320, (ctx) => {
+      const g = ctx.createRadialGradient(160, 160, 10, 160, 160, 160);
+      g.addColorStop(0, 'rgba(255,224,120,0.75)'); g.addColorStop(0.45, 'rgba(255,196,60,0.25)'); g.addColorStop(1, 'rgba(255,196,60,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, 320, 320);
+    });
+    // 빛줄기(상자가 열릴 때 천천히 돈다)
+    canvas('chest_rays', 400, 400, (ctx) => {
+      ctx.translate(200, 200);
+      for (let k = 0; k < 12; k++) {
+        ctx.rotate(Math.PI / 6);
+        const g = ctx.createLinearGradient(0, 0, 0, -200);
+        g.addColorStop(0, 'rgba(255,236,150,0.55)'); g.addColorStop(1, 'rgba(255,236,150,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.moveTo(-6, 0); ctx.lineTo(-26, -200); ctx.lineTo(26, -200); ctx.lineTo(6, 0); ctx.closePath(); ctx.fill();
+      }
+    });
+    // 작은 반짝이(가만히 있는 별)
+    canvas('chest_star', 24, 24, (ctx) => {
+      ctx.fillStyle = '#fff3b0';
+      ctx.beginPath(); ctx.moveTo(12, 0); ctx.quadraticCurveTo(12, 12, 24, 12); ctx.quadraticCurveTo(12, 12, 12, 24); ctx.quadraticCurveTo(12, 12, 0, 12); ctx.quadraticCurveTo(12, 12, 12, 0); ctx.fill();
+    });
+  }
+
   drawMaps() {
     const CX = 360;
     const CY = 650;
@@ -437,28 +532,7 @@ export class BootScene extends Phaser.Scene {
       g.fillRect(22, 9, 3, 5);
       g.fillRect(26, 9, 2, 4);
     });
-    // 전설 상자(금 테두리 보물 상자)
-    this.make_('chest', 160, 130, (g) => {
-      g.fillStyle(0x000000, 0.3);
-      g.fillEllipse(80, 122, 150, 16);
-      g.fillStyle(0x7a3a1a, 1);
-      g.lineStyle(4, 0x2a1408, 1);
-      g.fillRoundedRect(12, 50, 136, 70, 8);
-      g.strokeRoundedRect(12, 50, 136, 70, 8);
-      g.fillStyle(0x9a4a22, 1);
-      g.fillRoundedRect(8, 14, 144, 44, { tl: 30, tr: 30, bl: 4, br: 4 });
-      g.strokeRoundedRect(8, 14, 144, 44, { tl: 30, tr: 30, bl: 4, br: 4 });
-      g.fillStyle(0xffd84a, 1);
-      g.lineStyle(2, 0x8a6410, 1);
-      for (const x of [30, 122]) { g.fillRect(x - 6, 16, 12, 102); g.strokeRect(x - 6, 16, 12, 102); }
-      g.fillRect(8, 50, 144, 10);
-      g.strokeRect(8, 50, 144, 10);
-      g.fillRoundedRect(64, 46, 32, 30, 5);
-      g.strokeRoundedRect(64, 46, 32, 30, 5);
-      g.fillStyle(0x2a1408, 1);
-      g.fillCircle(80, 58, 4);
-      g.fillRect(78, 58, 4, 10);
-    });
+    this.drawChest();
     // 진압 경찰 거인의 방패(투명한 진압 방패)
     this.make_('riotshield', 30, 64, (g) => {
       g.fillStyle(0x9ec8f0, 0.45);

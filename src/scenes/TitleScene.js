@@ -164,7 +164,12 @@ export class TitleScene extends Phaser.Scene {
     const card = (y, h, edge) => c.add(panel(this, W / 2, y, 620, h, 0x1b222b, edge, 22));
     // 전설 상자
     card(390, 320, 0xffd84a);
-    c.add(this.add.image(190, 380, 'chest').setScale(1.05));
+    // 상자: 뒤에 금빛 후광(크기만 천천히 숨 쉬듯), 둘레에 가만히 있는 작은 별
+    const glow = this.add.image(190, 395, 'chest_glow').setScale(0.75);
+    this.tweens.add({ targets: glow, scale: 0.85, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+    c.add(glow);
+    c.add(this.chestView(190, 400, 0.72));
+    for (const [x, y, k] of [[96, 300, 0.9], [290, 318, 0.7], [110, 470, 0.6], [282, 455, 0.8]]) c.add(this.add.image(x, y, 'chest_star').setScale(k).setAlpha(0.9));
     c.add(text(this, 300, 270, '전설 상자', 34, '#ffe680', { ox: 0 }));
     c.add(text(this, 300, 312, '황금 열쇠 50개로 열어요', 20, COLOR.text, { ox: 0, strokeThickness: 0, bold: false }));
     c.add(text(this, 300, 352, '죽음의 황제 · 영원한 황금의 군주 12%씩\n잠긴 신화 해금 25% · 보유 코인\n1%: 이터널 「영원한 황금의 수호신」', 17, COLOR.dim, { ox: 0, oy: 0, strokeThickness: 0, bold: false, align: 'left', lineSpacing: 6 }));
@@ -191,25 +196,40 @@ export class TitleScene extends Phaser.Scene {
     c.add(button(this, W / 2, 1180, 300, 72, '뒤로', () => this.showMain(), { fill: 0x3a4652, textColor: '#eef3ea' }));
   }
 
+  // 상자 그림(몸통 + 뚜껑). 컨테이너 원점 = 몸통 가운데
+  chestView(x, y, k) {
+    const v = this.add.container(x, y).setScale(k);
+    const base = this.add.image(0, 0, 'chest_base').setScale(0.5);
+    const lid = this.add.image(0, -44, 'chest_lid').setScale(0.5).setOrigin(0.5, 0.9);
+    v.add([base, lid]);
+    v.lid = lid;
+    return v;
+  }
+
   // 전설 상자 열기: 상자가 천천히 흔들리다 금빛 고리와 함께 열리고 결과가 떠오른다(번쩍임 없음)
   openChest() {
     const res = R.openBox(this.save);
     if (!res) return;
     writeSave();
     const box = this.add.container(0, 0).setDepth(30);
-    const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.75).setInteractive();
+    const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x07090c, 0.92).setInteractive();
     box.add(dim);
-    const chest = this.add.image(W / 2, 600, 'chest').setScale(1.6);
-    box.add(chest);
+    const eternal = res.type === 'hero' && ALLY[res.id].tier === 6;
+    const glow = this.add.image(W / 2, 640, 'chest_glow').setScale(1.2).setAlpha(0.8);
+    const rays = this.add.image(W / 2, 600, 'chest_rays').setScale(1.4).setAlpha(0);
+    const chest = this.chestView(W / 2, 660, 1.6);
+    box.add([glow, rays, chest]);
     appear(this, box, { duration: 220, dy: 0 });
-    this.tweens.add({ targets: chest, angle: { from: -4, to: 4 }, duration: 260, yoyo: true, repeat: 3, ease: 'Sine.InOut',
+    // 1) 천천히 좌우로 흔들림 → 2) 뚜껑이 열리며 빛줄기가 서서히 퍼짐 → 3) 결과
+    this.tweens.add({ targets: chest, angle: { from: -3, to: 3 }, duration: 240, yoyo: true, repeat: 3, ease: 'Sine.InOut',
       onComplete: () => {
-        const eternal = res.type === 'hero' && ALLY[res.id].tier === 6;
-        const ring = this.add.image(W / 2, 600, 'ring').setTint(eternal ? 0xffe066 : 0xffd84a).setAlpha(0.8).setScale(0.5);
-        box.add(ring);
-        this.tweens.add({ targets: ring, scale: eternal ? 14 : 8, alpha: 0, duration: eternal ? 1400 : 800, ease: 'Quad.Out' });
-        this.tweens.add({ targets: chest, alpha: 0, scale: 1.9, duration: 400 });
-        this.time.delayedCall(350, () => this.showChestResult(box, res, eternal));
+        chest.angle = 0;
+        this.tweens.add({ targets: chest.lid, angle: -38, y: -70, duration: 450, ease: 'Back.Out' });
+        this.tweens.add({ targets: rays, alpha: eternal ? 1 : 0.8, scale: eternal ? 2.2 : 1.7, duration: 700, ease: 'Quad.Out' });
+        this.tweens.add({ targets: rays, angle: 360, duration: 12000, repeat: -1 }); // 아주 천천히 돈다
+        if (eternal) rays.setTint(0xfff3b0);
+        this.tweens.add({ targets: chest, alpha: 0, y: 700, delay: 600, duration: 400 });
+        this.time.delayedCall(750, () => this.showChestResult(box, res, eternal));
       } });
   }
 
