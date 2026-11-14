@@ -33,5 +33,7 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+      # 올린 묶음이 GitHub 쪽에서 바로 안 보일 때가 있어 잠깐 기다린다
+      - run: sleep 15
       - id: deployment
         uses: actions/deploy-pages@v4
